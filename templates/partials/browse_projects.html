@@ -1,0 +1,53 @@
+<section class="content-area" id="contentArea">
+    <h1>專案市場</h1>
+    <p>查看所有開放中的委託專案，並提出您的報價。</p>
+
+    <table id="contentTable">
+        <thead>
+            <tr>
+                <th>專案名稱</th>
+                <th>委託人</th> 
+                <th>預算</th>
+                <th>發布日期</th>
+                <th>截止日期</th>
+            </tr>
+        </thead>
+        
+        <tbody>
+            {% if not items %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 20px;">目前沒有任何開放中的專案。</td>
+                </tr>
+            
+            {% else %}
+                {% for item in items %}
+                    <tr>
+                        <td><a onclick='loadContent("/page/my-projects/read/{{item.id}}")'> {{ item.title }}</a></td>
+                        <td>{{ item.client_username }}</td>
+                        <td>{{ item.budget }}</a></td>
+                        <td>{{ item.create_time.strftime('%Y-%m-%d') }}</td>
+                        <td> {{ item.deadline_date.strftime('%Y-%m-%d') if item.deadline_date else 'N/A' }}</td>
+                    </tr>
+                {% endfor %}
+            {% endif %}
+        </tbody>
+    </table>
+</section>
+
+<div id="loading">
+    <div class="jelly-triangle">
+        <div class="jelly-triangle__dot"></div>
+        <div class="jelly-triangle__traveler"></div>
+    </div>
+
+    <svg width="0" height="0" class="jelly-maker">
+        <defs>
+            <filter id="uib-jelly-triangle-ooze">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="7.3" result="blur"></feGaussianBlur>
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="ooze"></feColorMatrix>
+                <feBlend in="SourceGraphic" in2="ooze"></feBlend>
+            </filter>
+        </defs>
+    </svg>
+    <div class="loading-text" id="loadingText">請稍後...</div>
+</div>

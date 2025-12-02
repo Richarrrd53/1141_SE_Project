@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>註冊新帳號</title>
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; display: grid; place-items: center; min-height: 100vh; background-color: #f4f4f4; }
+        form { background: #fff; border-radius: 8px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        div { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, button { width: 300px; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        button { background-color: #2F4189; color: white; cursor: pointer; }
+        #error-message { color: red; display: none; }
+    </style>
+</head>
+<body>
+
+    <form id="register-form">
+        <h2>註冊新帳號</h2>
+        
+        <div id="error-message"></div>
+
+        <div>
+            <label for="username">使用者名稱:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div>
+            <label for="password">密碼:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <div>
+            <label for="role">我想註冊為:</label>
+            <select id="role" name="role" required>
+                <option value="" disabled selected>-- 請選擇您的角色 --</option>
+                <option value="client">委託人 (我要發案)</option>
+                <option value="freelancer">接案人 (我要接案)</option>
+            </select>
+        </div>
+        <button type="submit" id="submit-button">註冊</button>
+        <p style="text-align: center; margin-top: 10px;">
+            已經有帳號了？ <a href="/login.html">點此登入</a>
+        </p>
+    </form>
+
+    <script>
+        const registerForm = document.getElementById('register-form');
+        const errorMessageDiv = document.getElementById('error-message');
+        const submitButton = document.getElementById('submit-button');
+
+        registerForm.addEventListener('submit', async (event) => {
+            // 1. 
+            event.preventDefault();
+            
+            submitButton.disabled = true;
+            submitButton.innerText = '註冊中...';
+            errorMessageDiv.style.display = 'none';
+
+            // 2. 
+            const formData = new FormData(registerForm);
+
+            try {
+                // 3. 
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) { // 
+                    // 4. 
+                    alert(data.message);
+                    window.location.href = '/login.html'; // 
+                } else {
+                    // 5. 
+                    errorMessageDiv.innerText = data.message;
+                    errorMessageDiv.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('註冊時發生錯誤:', error);
+                errorMessageDiv.innerText = '發生未預期的錯誤，請稍後再試。';
+                errorMessageDiv.style.display = 'block';
+            } finally {
+                // 6. 
+                submitButton.disabled = false;
+                submitButton.innerText = '註冊';
+            }
+        });
+    </script>
+
+</body>
+</html>

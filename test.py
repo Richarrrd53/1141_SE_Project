@@ -1,0 +1,31 @@
+import bcrypt
+
+def verify_pwd(plain_pwd: str, hashed_pwd: str) -> bool:
+    plain_pwd_bytes = plain_pwd.encode('utf-8')
+    hashed_pwd_bytes = hashed_pwd.encode('utf-8')
+
+    truncated_plain_pwd_bytes = plain_pwd_bytes[:72]
+
+    try:
+        return bcrypt.checkpw(truncated_plain_pwd_bytes, hashed_pwd_bytes)
+    except Exception:
+        return False
+
+def get_pwd_hash(pwd: str) -> str:
+    pwd_bytes = pwd.encode('utf-8')
+
+    truncated_pwd_bytes = pwd_bytes[:72]
+
+    salt = bcrypt.gensalt()
+    hashed_bytes = bcrypt.hashpw(truncated_pwd_bytes, salt)
+
+    return hashed_bytes.decode('utf-8')
+
+hashed = get_pwd_hash("a5850536")
+print(f"Your hashed password is: {hashed}")
+
+is_correct = verify_pwd("a5850536", hashed)
+print(f"Is password correct? {is_correct}")
+
+is_wrong = verify_pwd("wrongpassword", hashed)
+print(f"Is password wrong? {not is_wrong}")

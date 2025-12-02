@@ -1,0 +1,183 @@
+<section class="content-area" id="contentArea">
+    <h1>{{ project.title }}</h1>
+    
+    <table id="project-info">
+        <tr>
+            <th>委託人：{{ project.client_username }}</th>
+            <th>發布日期：{{ project.create_time.strftime('%Y-%m-%d') }}</th>
+            <th>截止日期：{{ project.deadline_date.strftime('%Y-%m-%d') if project.deadline_date else 'N/A' }}</th>
+            <th><span class="status-pill link-{{project.status}}">{{ project.status_text }}</span></th>
+        </tr>
+    </table>
+    
+    {% if project.accepted_freelancer_username %}
+        <p><strong>已承接：</strong> {{ project.accepted_freelancer_username }}</p>
+    {% endif %}
+
+    {% if role == 'client' and project.status == 'in_progress' %}
+        <h3>您已同意 {{ project.accepted_freelancer_username }} 接案，請等候接案人交付檔案。</h3>
+    
+    {% elif role == 'client' and project.status == 'delivered' %}
+        <hr>
+        <h3>結案管理</h3>
+        <p>接案人 ({{ project.accepted_freelancer_username }}) 已交付檔案，請下載審核：</p>
+        
+        <a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
+            <img src="./img/download.svg" class="icon" alt="">下載結案檔案
+        </a>
+        
+        <div class="btnContainer" style="justify-content: flex-start; margin-top: 20px;">
+            <button class="btn btn-danger" onclick='notifyWindow("確定要退件？(專案將退回進行中)", "確認退件", "reject_delivery", {{ project.id }}, true);'>
+                退件
+            </button>
+            <button class="btn btn-success" onclick='notifyWindow("確認接受此結案檔案？(專案將結案)", "接受結案", "accept_delivery", {{ project.id }}, false);'>
+                接受結案
+            </button>
+        </div>
+    
+    {% elif role == 'client' and project.status == 'completed'%}
+        <p>接案人 ({{ project.accepted_freelancer_username }}) 已交付檔案，並結案：</p>
+        <a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
+            <img src="./img/download.svg" class="icon" alt="">下載結案檔案
+        </a>
+
+    {% elif role == 'client' and project.status == 'rejected'%}
+        <h3 class="text-danger">您已退件 {{ project.accepted_freelancer_username }} 的檔案，請等候接案人重新交付。</h3>
+    {% endif %}
+
+    <hr>
+    
+    <div>
+        <strong>預算：</strong> ${{ project.budget }}
+    </div>
+    <div>
+        <strong>需求描述：</strong>
+        <p style="white-space: pre-wrap;">{{ project.content }}</p>
+    </div>
+
+    {% if role == 'client' %}
+    <hr>
+    <h3>收到的報價 ({{ bids | length }} 則)</h3>
+    {% if bids %}
+        <table id="contentTable">
+            <thead>
+                <tr>
+                    <th style="font-weight: bold; padding: 10px;">提案者</th>
+                    <th style="font-weight: bold; padding: 10px;">報價</th>
+                    <th style="font-weight: bold; padding: 10px;">留言</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bid in bids %}
+                <tr>
+                    <td>{{ bid.freelancer_username }}</td>
+                    <td>${{ bid.bid_amount }}</td>
+                    <td>{{ bid.message }}</td>
+                    <td>
+                        {% if project.status == 'open' %}
+                            <button class="btn btn-primary" onclick='notifyWindow("確定要接受此報價？ (專案將鎖定並開始)", "接受", "accept_bid", {{ bid.id }}, false);'>
+                                接受此報價
+                            </button>
+                        {% elif bid.status == 'accepted' %}
+                            <span class="status-pill link-open">已接受</span>
+                        {% elif bid.status == 'rejected' %}
+                            <span class="status-pill link-rejected">已拒絕</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>目前尚無報價。</p>
+    {% endif %}
+
+    {% elif role == 'freelancer' and project.status == 'open' %}
+        <hr>
+        {%if is_bid_exist == False%}
+            <h3>有意願承包嗎？請提出承包意願 (報價)</h3>
+            <form id="create-bid-form">
+                <input type="hidden" name="project_id" value="{{ project.id }}">
+                <div class="form-group">
+                    <label for="bid_amount">您的報價 (TWD):</label>
+                    <input type="number" id="bid_amount" name="bid_amount" required>
+                </div>
+                <div class="form-group">
+                    <label for="message">留言 (告訴委託人您為什麼適合，選填):</label>
+                    <textarea id="message" name="message" rows="4"></textarea>
+                </div>
+                <button type="button" class="btn btn-primary" id="submitBidBtn" onclick='notifyWindow("是否確認送出這則報價？", "送出", "sendBid", 0, false);'>送出報價</button>
+            </form>
+        {%elif is_bid_exist == True and bid_status == 'pending'%}
+            <h3 class="text-warning">您已提過報價，請耐心等待委託人接受。</h3>
+        {%elif is_bid_exist == True and bid_status == 'rejected'%}
+            <h3 class="text-danger">很抱歉，委託人已拒絕你的報價，再接再厲。</h3>
+        {%endif%}
+    
+    {% elif role == 'freelancer' and project.status in ['in_progress', 'rejected'] and current_user == project.accepted_freelancer_username %}
+        <hr>
+        {% if project.status == 'rejected' %}
+            <h3 class="text-danger">委託人已退件，請重新上傳檔案</h3>
+            <p>請重新上傳您的專案成果，委託人將會進行審核。</p>
+        {% else %}
+            <h3>上傳結案檔案</h3>
+            <p>請上傳您的專案成果，委託人將會進行審核。</p>
+        {% endif %}
+        
+        <form id="deliver-project-form">
+            <input type="hidden" id="project_id_for_delivery" value="{{ project.id }}">
+            <div class="form-group">
+                <label for="delivery_file">選擇檔案 (.zip, .pdf, .jpg...):</label>
+                <input type="file" id="delivery_file" name="delivery_file" required>
+            </div>
+            <button type="button" class="btn btn-primary" id="submitDeliveryBtn" onclick='notifyWindow("是否上傳檔案", "上傳", "upload", {{project.id}}, false);'>上傳結案</button>
+        </form>
+    
+    {% elif role == 'freelancer' and project.status == 'delivered' %}
+        <h3 style="color: #0077b6;">您已上傳結案檔案，請等待委託人審核。</h3>
+        
+    {% elif role == 'freelancer' and project.status == 'completed' %}
+        <h3 style="color: #4CAF50;">🎉 恭喜！專案已結案。</h3>
+    {% endif %}
+
+    <div class="btnContainer" style="justify-content: flex-start; margin-top: 2rem;">
+        {% if role == 'client' and project.status != 'completed'%}
+            <button class="btn btn-secondary" onclick="loadContent('/page/my-projects'); return false;">
+                返回列表
+            </button>
+            <button class="btn btn-primary" onclick="loadContent('/page/my-projects/edit-form/{{ project.id }}'); return false;">
+                編輯專案
+            </button>
+        {% elif role == 'client' and project.status == 'completed' %}
+            <button class="btn btn-secondary" onclick="loadContent('/page/my-projects'); return false;">
+                返回列表
+            </button>
+        {% elif role == 'freelancer' and project.status == 'open' %}
+            <button class="btn btn-secondary" onclick="loadContent('/page/browse-projects'); return false;">
+                返回列表
+            </button>
+        {% else %}
+            <button class="btn btn-secondary" onclick="tempPage = 0; menuLinkClick(6);">
+                返回列表
+            </button>
+        {% endif %}
+    </div>
+</section>
+
+<div id="loading">
+    <div class="jelly-triangle">
+        <div class="jelly-triangle__dot"></div>
+        <div class="jelly-triangle__traveler"></div>
+    </div>
+    <svg width="0" height="0" class="jelly-maker">
+        <defs>
+            <filter id="uib-jelly-triangle-ooze">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="7.3" result="blur"></feGaussianBlur>
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="ooze"></feColorMatrix>
+                <feBlend in="SourceGraphic" in2="ooze"></feBlend>
+            </filter>
+        </defs>
+    </svg>
+    <div class="loading-text" id="loadingText">請稍後...</div>
+</div>
