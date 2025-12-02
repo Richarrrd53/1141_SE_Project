@@ -479,15 +479,15 @@ async def deliver_project(
         
         safe_name = safeFilename(delivery_file.filename)
         
-        upload_dir = "html/uploads/deliveries"
-        os.makedirs(upload_dir, exist_ok=True) 
-        file_path_for_db = f"uploads/deliveries/{project_id}_{safe_name}"
-        full_save_path = os.path.join(upload_dir, f"{project_id}_{safe_name}")
+        # upload_dir = "html/uploads/deliveries"
+        # os.makedirs(upload_dir, exist_ok=True) 
+        # file_path_for_db = f"uploads/deliveries/{project_id}_{safe_name}"
+        # full_save_path = os.path.join(upload_dir, f"{project_id}_{safe_name}")
 
-        with open(full_save_path, "wb") as buffer:
-            buffer.write(await delivery_file.read())
+        # with open(full_save_path, "wb") as buffer:
+        #     buffer.write(await delivery_file.read())
 
-        await posts.update_project_delivery(conn, project_id, file_path_for_db)
+        # await posts.update_project_delivery(conn, project_id, file_path_for_db)
         
         await notifications.create_notification(
             conn,
