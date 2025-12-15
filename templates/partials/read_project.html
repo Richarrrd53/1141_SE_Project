@@ -5,7 +5,7 @@
         <tr>
             <th>委託人：{{ project.client_username }}</th>
             <th>發布日期：{{ project.create_time.strftime('%Y-%m-%d') }}</th>
-            <th>截止日期：{{ project.deadline_date.strftime('%Y-%m-%d') if project.deadline_date else 'N/A' }}</th>
+            <th>截止日期：{{ project.deadline_date.strftime('%Y-%m-%d %H:%M') if project.deadline_date else 'N/A' }}</th>
             <th><span class="status-pill link-{{project.status}}">{{ project.status_text }}</span></th>
         </tr>
     </table>
@@ -22,9 +22,45 @@
         <h3>結案管理</h3>
         <p>接案人 ({{ project.accepted_freelancer_username }}) 已交付檔案，請下載審核：</p>
         
-        <a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
-            <img src="./img/download.svg" class="icon" alt="">下載結案檔案
-        </a>
+        {% if delivery_versions %}
+            <h4>所有版本歷史：</h4>
+            <table id="contentTable" style="margin-bottom: 20px;">
+                <thead>
+                    <tr>
+                        <th style="font-weight: bold; padding: 10px;">版本</th>
+                        <th style="font-weight: bold; padding: 10px;">上傳時間</th>
+                        <th style="font-weight: bold; padding: 10px;">檔案</th>
+                        <th style="font-weight: bold; padding: 10px;">狀態</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for version in delivery_versions %}
+                    <tr>
+                        <td>版本 {{ version.version }}</td>
+                        <td>{{ version.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <a href="/{{ version.file_path }}" target="_blank" class="btn btn-download" style="font-size: 12px; padding: 5px 10px;">
+                                <img src="./img/download.svg" class="icon" alt="" style="width: 14px; height: 14px;">下載
+                            </a>
+                        </td>
+                        <td>
+                            {% if version.status == 'rejected' %}
+                                <span style="color: #dc3545;">已退回</span>
+                            {% elif version.status == 'accepted' %}
+                                <span style="color: #28a745;">已接受</span>
+                            {% else %}
+                                <span style="color: #ffc107;">待審核</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% elif project.delivery_file_path %}
+            <a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
+                <img src="./img/download.svg" class="icon" alt="">下載結案檔案
+            </a>
+        {% endif %}
         
         <div class="btnContainer" style="justify-content: flex-start; margin-top: 20px;">
             <button class="btn btn-danger" onclick='notifyWindow("確定要退件？(專案將退回進行中)", "確認退件", "reject_delivery", {{ project.id }}, true);'>
@@ -37,9 +73,46 @@
     
     {% elif role == 'client' and project.status == 'completed'%}
         <p>接案人 ({{ project.accepted_freelancer_username }}) 已交付檔案，並結案：</p>
-        <a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
-            <img src="./img/download.svg" class="icon" alt="">下載結案檔案
-        </a>
+        
+        {% if delivery_versions %}
+            <h4>所有版本歷史：</h4>
+            <table id="contentTable" style="margin-bottom: 20px;">
+                <thead>
+                    <tr>
+                        <th style="font-weight: bold; padding: 10px;">版本</th>
+                        <th style="font-weight: bold; padding: 10px;">上傳時間</th>
+                        <th style="font-weight: bold; padding: 10px;">檔案</th>
+                        <th style="font-weight: bold; padding: 10px;">狀態</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for version in delivery_versions %}
+                    <tr>
+                        <td>版本 {{ version.version }}</td>
+                        <td>{{ version.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <a href="/{{ version.file_path }}" target="_blank" class="btn btn-download" style="font-size: 12px; padding: 5px 10px;">
+                                <img src="./img/download.svg" class="icon" alt="" style="width: 14px; height: 14px;">下載
+                            </a>
+                        </td>
+                        <td>
+                            {% if version.status == 'rejected' %}
+                                <span style="color: #dc3545;">已退回</span>
+                            {% elif version.status == 'accepted' %}
+                                <span style="color: #28a745;">已接受</span>
+                            {% else %}
+                                <span style="color: #ffc107;">待審核</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% elif project.delivery_file_path %}
+            <a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
+                <img src="./img/download.svg" class="icon" alt="">下載結案檔案
+            </a>
+        {% endif %}
 
     {% elif role == 'client' and project.status == 'rejected'%}
         <h3 class="text-danger">您已退件 {{ project.accepted_freelancer_username }} 的檔案，請等候接案人重新交付。</h3>
@@ -65,6 +138,7 @@
                     <th style="font-weight: bold; padding: 10px;">提案者</th>
                     <th style="font-weight: bold; padding: 10px;">報價</th>
                     <th style="font-weight: bold; padding: 10px;">留言</th>
+                    <th style="font-weight: bold; padding: 10px;">提案計畫書</th>
                     <th></th>
                 </tr>
             </thead>
@@ -74,6 +148,15 @@
                     <td>{{ bid.freelancer_username }}</td>
                     <td>${{ bid.bid_amount }}</td>
                     <td>{{ bid.message }}</td>
+                    <td>
+                        {% if bid.proposal_file_path %}
+                            <a href="/{{ bid.proposal_file_path }}" target="_blank" class="btn btn-download" style="font-size: 12px; padding: 5px 10px;">
+                                <img src="./img/download.svg" class="icon" alt="" style="width: 14px; height: 14px;">下載 PDF
+                            </a>
+                        {% else %}
+                            <span style="color: #999;">未提供</span>
+                        {% endif %}
+                    </td>
                     <td>
                         {% if project.status == 'open' %}
                             <button class="btn btn-primary" onclick='notifyWindow("確定要接受此報價？ (專案將鎖定並開始)", "接受", "accept_bid", {{ bid.id }}, false);'>
@@ -95,9 +178,12 @@
 
     {% elif role == 'freelancer' and project.status == 'open' %}
         <hr>
-        {%if is_bid_exist == False%}
+        {% if is_deadline_passed %}
+            <h3 class="text-danger">⚠️ 此專案已過截止日期，無法再提交報價</h3>
+            <p style="color: #666;">截止時間：{{ project.deadline_date.strftime('%Y-%m-%d %H:%M') if project.deadline_date else 'N/A' }}</p>
+        {% elif is_bid_exist == False %}
             <h3>有意願承包嗎？請提出承包意願 (報價)</h3>
-            <form id="create-bid-form">
+            <form id="create-bid-form" enctype="multipart/form-data">
                 <input type="hidden" name="project_id" value="{{ project.id }}">
                 <div class="form-group">
                     <label for="bid_amount">您的報價 (TWD):</label>
@@ -106,6 +192,11 @@
                 <div class="form-group">
                     <label for="message">留言 (告訴委託人您為什麼適合，選填):</label>
                     <textarea id="message" name="message" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="proposal_file">提案計畫書 (PDF，必填):</label>
+                    <input type="file" id="proposal_file" name="proposal_file" accept=".pdf" required>
+                    <small style="color: #666;">僅接受 PDF 格式</small>
                 </div>
                 <button type="button" class="btn btn-primary" id="submitBidBtn" onclick='notifyWindow("是否確認送出這則報價？", "送出", "sendBid", 0, false);'>送出報價</button>
             </form>
