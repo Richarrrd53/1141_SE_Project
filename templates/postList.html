@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工作委託平台</title>
+    <link rel="stylesheet" href="./css/home.css">
+    <script src="./js/home.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@100..900&display=swap" rel="stylesheet">
+</head>
+<body>
+	<div id="BG"></div>
+    <nav class="sidebar">
+		<input class="label-check" id="label-check" type="checkbox">
+        <label for="label-check" id="label-check2" class="hamburger-label">
+            <div class="line1"></div>
+            <div class="line2"></div>
+            <div class="line3"></div>
+        </label>
+		<div class="vmenuContainer" id="vmenuContainer">
+			{% if role == 'client' %}
+			<ul class="menu-list" id="menu-client">
+				<li class='menu-item'><a id="menuLink1" onclick="menuLinkClick(1)"  class="checked"><img src="./img/home-blur.svg" class="menu-icon" alt=""><span>我的專案</span></a></li>
+				<li class='menu-item'><a id="menuLink2" onclick="menuLinkClick(2)" ><img src="./img/plus-blur.svg" class="menu-icon" alt=""><span>建立新專案</span></a></li>
+				<li class='menu-item'><a id="menuLink3" onclick="menuLinkClick(3)" ><img src="./img/history-blur.svg" class="menu-icon" alt=""><span>歷史紀錄</span></a></li>
+				<li class='menu-item'><a id="menuLink4" onclick="menuLinkClick(4)" ><img src="./img/logout-blur.svg" class="menu-icon" alt=""><span>登出</span></a></li>
+			</ul>
+			
+			{% elif role == 'freelancer' %}
+			<ul class="menu-list" id="menu-freelancer">
+				<li class='menu-item'><a id="menuLink1" onclick="menuLinkClick(5)" class="checked"><img src="./img/search-blur.svg" class="menu-icon" alt=""><span>專案市場</span></a></li> 
+				<li class='menu-item'><a id="menuLink2" onclick="menuLinkClick(6)" ><img src="./img/folder-blur.svg" class="menu-icon" alt=""><span>我的承包</span></a></li>
+				<li class='menu-item'><a id="menuLink3" onclick="menuLinkClick(7)" ><img src="./img/history-blur.svg" class="menu-icon" alt=""><span>歷史紀錄</span></a></li>
+				<li class='menu-item'><a id="menuLink4" onclick="menuLinkClick(8)"><img src="./img/logout-blur.svg" class="menu-icon" alt=""><span>登出</span></a></li>
+			</ul>
+			{% endif %}
+		</div>
+    </nav>
+
+	<header class="topbar">
+        <div></div>
+        <div>
+            你好, {{ username }} <span class="role-{{ role }}">{{ role }}</span>
+        </div>
+		<input id="notifyCheck" type="checkbox" style="display: none " >
+        <label for="notifyCheck" class="icon-bg" id="notifyBell">
+			<img src="./img/notification-blur.svg" class="icon" alt="" >
+            <span id="notifyCount"></span>
+        </label>
+	</header>
+
+    
+
+    <main class="main-content" id="mainContent">
+        
+        <section class="content-area" id="contentArea">
+            <h1>
+                {% if role == 'client' %}
+                    我的專案列表
+                {% else %}
+                    專案市場
+                {% endif %}
+            </h1>
+
+            <ul id="contentList">
+            {% for item in items %}
+                <li>{{ item.title }}</li>
+            {% endfor %}
+            </ul>
+        </section>
+        <ul class="notify-list" id="notifyDropdown" ></ul>
+        <div id="loading">
+            <div class="jelly-triangle">
+                <div class="jelly-triangle__dot"></div>
+                <div class="jelly-triangle__traveler"></div>
+            </div>
+
+            <svg width="0" height="0" class="jelly-maker">
+                <defs>
+                    <filter id="uib-jelly-triangle-ooze">
+                        <feGaussianBlur in="SourceGraphic" stdDeviation="7.3" result="blur"></feGaussianBlur>
+                        <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="ooze"></feColorMatrix>
+                        <feBlend in="SourceGraphic" in2="ooze"></feBlend>
+                    </filter>
+                </defs>
+            </svg>
+            <div class="loading-text" id="loadingText">請稍後...</div>
+        </div>
+    </main>
+    <ul id="notifyDropdown"></ul>
+
+</body>
+</html>

@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pydantic
+python-multipart
+jinja2
+psycopg[binary]
+psycopg-pool
+bcrypt
+itsdangerous

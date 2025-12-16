@@ -1,0 +1,51 @@
+<section class="content-area" id="contentArea">
+    <h1>
+        編輯委託專案
+    </h1>
+    <p>您正在編輯： <strong>{{ item.title }}</strong></p>
+    <hr>
+    
+    <form class="editForm" id="edit-form-{{ item.id }}">
+        <div>
+            <label for="title">專案標題:</label><br>
+            <input type="text" id="title" name="title" value="{{ item.title }}">
+        </div>
+        
+        <div>
+            <label for="description">詳細需求描述:</label><br>
+            <input type="hidden" id="content" name="content" value="{{ item.content }}">
+            <textarea id="description" name="description" rows="10">{{ item.content }}</textarea>
+        </div>
+        
+        <div>
+            <label for="budget">預算 (TWD):</label><br>
+            <input type="number" id="budget" name="budget" value="{{ item.budget }}">
+        </div>
+        <div class="btnContainer">
+            <button type="button" onclick="loadContent('/page/my-projects/read/{{ item.id }}');">
+                取消
+            </button>
+            <button id="submitBtn" type="button" onclick='notifyWindow("是否變更這則委託專案？", "確認", "edit", "{{ item.id }}", false);'>
+                完成編輯
+            </button>
+        </div>
+    </form>
+</section>
+
+<div id="loading">
+    <div class="jelly-triangle">
+        <div class="jelly-triangle__dot"></div>
+        <div class="jelly-triangle__traveler"></div>
+    </div>
+
+    <svg width="0" height="0" class="jelly-maker">
+        <defs>
+            <filter id="uib-jelly-triangle-ooze">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="7.3" result="blur"></feGaussianBlur>
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="ooze"></feColorMatrix>
+                <feBlend in="SourceGraphic" in2="ooze"></feBlend>
+            </filter>
+        </defs>
+    </svg>
+    <div class="loading-text" id="loadingText">請稍後...</div>
+</div>

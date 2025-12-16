@@ -1,0 +1,58 @@
+<section class="content-area" id="contentArea">
+    <h1>建立新委託專案</h1>
+    <p>請詳細填寫您的專案需求。</p>
+    <hr>
+    
+    <table id="project-info">
+        <tr>
+            <th>委託人：{{ user }}</th>
+            <th>發布日期：{{ today_date }}</th>
+        </tr>
+    </table>
+    <hr>
+    
+    <form id="create-project-form">
+        <div>
+            <label for="title">專案標題:</label><br>
+            <input type="text" id="title" name="title" required>
+        </div>
+        
+        <div>
+            <label for="description">詳細需求描述:</label><br>
+            <input type="hidden" id="content" name="content">
+            <textarea id="description" name="description" rows="10" required></textarea>
+        </div>
+        
+        <div>
+            <label for="budget">預算 (TWD):</label><br>
+            <input type="number" id="budget" name="budget" required>
+        </div>
+
+        <div>
+            <label for="deadline">截止時間(天):</label><br>
+            <input type="number" id="deadline" name="deadline" value="30" required>
+        </div>
+
+        <button type="button" id="submitBtn" onclick='notifyWindow("是否發布這則委託專案？", "發布", "create", 0, false);'>
+            發布委託
+        </button>
+    </form>
+</section>
+
+<div id="loading">
+    <div class="jelly-triangle">
+        <div class="jelly-triangle__dot"></div>
+        <div class="jelly-triangle__traveler"></div>
+    </div>
+
+    <svg width="0" height="0" class="jelly-maker">
+        <defs>
+            <filter id="uib-jelly-triangle-ooze">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="7.3" result="blur"></feGaussianBlur>
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="ooze"></feColorMatrix>
+                <feBlend in="SourceGraphic" in2="ooze"></feBlend>
+            </filter>
+        </defs>
+    </svg>
+    <div class="loading-text" id="loadingText">請稍後...</div>
+</div>

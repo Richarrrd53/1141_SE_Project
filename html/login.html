@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登入</title>
+    <link rel="stylesheet" href="./css/login.css">
+    <script src="./js/login.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@100..900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
+</head>
+<body>
+    <div id="mainContainer">
+        <div id="loginFormSection">
+            <div class="loginItems">
+                <dotlottie-player class="loginImg" id="loginImg" src="https://lottie.host/bdc50074-ef96-4525-afcf-5d7d290061ae/cTAtG0HzW8.lottie" background="transparent" speed="1" style="width: 500px; height: 500px" loop></dotlottie-player>
+            </div>
+            <div class="loginItems">
+                <div id="loginForm">
+                    <form method="POST" action="/login" id="loginForm2">
+                        <h2>Hey! Welcome, <br><span style="font-size: 36px; font-weight: 900; color: #464f63;">please log in to begin</span></h2>
+                        <p id="errorMessage">使用者名稱或密碼不可空白！請再試一次。</p>
+                        <div class="inputBG">
+                            <div class="inputIconBG"><img src="./img/at-sign.svg" alt=""></div>
+                            <input id="input-username" type="text" name="username" placeholder="Enter your Username..." autocomplete="off" maxlength="16">
+                        </div>
+                        <div class="inputBG" id="pwdInput">
+                            <div class="inputIconBG"><img src="./img/key.svg" alt=""></div>
+                            <input id="input-password" type="password" name="password" placeholder="Enter your Password..." autocomplete="off" maxlength="16">
+                            <div class="inputIconBG" id="show">
+                                <img src="../img/showControl.svg" alt="" id="inputShow1">
+                                <img src="../img/showSplash.svg" alt="" id="inputShow2">
+                                <svg version="1.1" id="showSplash1" data-name="圖層 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 1100">
+                                    <defs>
+                                        <mask id="inputShowMask1" data-name="圖層 1">
+                                        <rect x="0" y="0" width="100" height="100" rx="3" ry="3" fill="#ffffff"/>
+                                        <rect class="cls-1" id="inputShowMask2" x="0" y="0" width="6" height="100" rx="3" ry="3" fill="#000000"/>
+                                        </mask>
+                                    </defs>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="btnContainer">
+                            <input type="button" id="signupBtn" value="Sign Up">
+                            <input type="button" id="submitBtn" value="Log In">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="registerFormSection">
+            <div class="loginItems">
+                <dotlottie-player class="loginImg" id="registerImg" src="https://lottie.host/210ca1bf-94fc-4eb6-888c-d2710d0d69f3/pOPhluMlrO.lottie" background="transparent" speed="1" style="width: 500px; height: 500px" loop></dotlottie-player>
+            </div>
+            <div class="loginItems">
+                <div id="registerForm">
+                    <form action="" id="registerForm2">
+                        <h2>Join Us, <br><span style="font-size: 36px; font-weight: 900; color: #464f63;">create your account</span></h2>
+
+                        <p id="registerErrorMessage">請填寫所有欄位</p>
+
+                        <div class="inputBG">
+                            <div class="inputIconBG"><img src="./img/at-sign.svg" alt=""></div>
+                            <input id="input-reg-username" type="text" name="username" placeholder="Enter a new Username..." autocomplete="off" maxlength="16" required>
+                        </div>
+                        
+                        <div class="inputBG">
+                            <div class="inputIconBG"><img src="./img/key.svg" alt=""></div>
+                            <input id="input-reg-password" type="password" name="password" placeholder="Enter a new Password..." autocomplete="off" maxlength="16" required>
+                            <div class="inputIconBG" id="show2">
+                                <img src="../img/showControl.svg" alt="" id="inputShow3">
+                                <img src="../img/showSplash.svg" alt="" id="inputShow4">
+                                <svg version="1.1" id="showSplash1" data-name="圖層 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 1100">
+                                    <defs>
+                                        <mask id="inputShowMask3" data-name="圖層 1">
+                                        <rect x="0" y="0" width="100" height="100" rx="3" ry="3" fill="#ffffff"/>
+                                        <rect class="cls-1" id="inputShowMask4" x="0" y="0" width="6" height="100" rx="3" ry="3" fill="#000000"/>
+                                        </mask>
+                                    </defs>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="inputBG">
+                            <div class="inputIconBG"><img src="./img/user.svg" alt=""></div> <select id="input-reg-role" name="role" required>
+                                <option value="" disabled selected>選擇您的身分</option>
+                                <option value="client">委託人 (我要發案)</option>
+                                <option value="freelancer">接案人 (我要接案)</option>
+                            </select>
+                        </div>
+
+                        <div class="btnContainer">
+                            <input type="button" id="backToLoginBtn" value="Back to Log In">
+                            <input type="button" id="registerBtn" value="Sign Up">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="loading-flex" id="loadingFlex">
+            <div class="jelly-triangle">
+                <div class="jelly-triangle__dot"></div>
+                <div class="jelly-triangle__traveler"></div>
+            </div>
+
+            <svg width="0" height="0" class="jelly-maker">
+                <defs>
+                    <filter id="uib-jelly-triangle-ooze">
+                        <feGaussianBlur in="SourceGraphic" stdDeviation="7.3" result="blur"></feGaussianBlur>
+                        <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7" result="ooze"></feColorMatrix>
+                        <feBlend in="SourceGraphic" in2="ooze"></feBlend>
+                    </filter>
+                </defs>
+            </svg>
+            <div class="loading-text" id="loadingText">正在檢查身分訊息...</div>
+        </div>
+
+        <div class="verification-container" id="verificationContainer">
+            <div id="verificationContainerG">
+                <img src="../img/error.svg" alt="" class="verification-container-img" id="verificationContainerError">
+                <dotlottie-player class="verification-container-img" id="verificationContainerCorrect" src="https://lottie.host/4e3c4aa3-f78b-461c-b1f6-581d162f47ef/J6wiRXslNf.lottie" background="transparent" speed="1" style="width: 150px; height: 150px"></dotlottie-player>
+                <div class="group-text" id="verificationContainerText1">帳號或密碼錯誤，請再試一次！</div>
+                <div class="group-text" id="verificationContainerText2">登入成功</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
