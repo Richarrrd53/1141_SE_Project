@@ -129,8 +129,11 @@ async def get_my_projects_page(req: Request, conn = Depends(getDB), user:str=Dep
     role_text = translate_role(myRole)
 
     for item in myList:
-        if item.get('create_time') and item.get('deadline') is not None:
-            item['deadline_date'] = item['create_time'] + timedelta(days=item['deadline'])
+        # 優先使用 deadline_datetime，如果不存在則回退到舊的計算方式
+        if item.get('deadline_datetime'):
+            item['deadline_date'] = item['deadline_datetime']
+        elif item.get('create_time') and item.get('deadline') is not None:
+            item['deadline_date'] = item['create_time'] + timedelta(minutes=item['deadline'])
         else:
             item['deadline_date'] = None
 
@@ -159,7 +162,7 @@ async def get_create_project_page(req: Request, user:str=Depends(get_current_use
     })
 
 @app.post("/page/create-project")
-async def create_project(req: Request, conn = Depends(getDB), user_name: str = Depends(get_current_user),title: str = Form(...),content: str = Form(...),budget = Form(...),deadline = Form(...)):
+async def create_project(req: Request, conn = Depends(getDB), user_name: str = Depends(get_current_user),title: str = Form(...),content: str = Form(...),budget = Form(...),deadline: str = Form(...)):
     if user_name is None:
         return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
     try:
@@ -185,6 +188,17 @@ async def create_project(req: Request, conn = Depends(getDB), user_name: str = D
             raise HTTPException(status_code=404, detail="找不到使用者")
         
         user_id = user['id']
+        
+        # 將前端傳來的 datetime-local 字串轉換為 datetime 物件
+        deadline_dt = datetime.fromisoformat(deadline)
+        
+        # 計算從現在到截止時間的分鐘數
+        time_diff = deadline_dt - now
+        deadline_minutes = int(time_diff.total_seconds() / 60)
+        
+        # 確保截止時間在未來
+        if deadline_minutes <= 0:
+            return JSONResponse(status_code=400, content={"success": False, "message": "截止時間必須在未來"})
 
         await posts.createPost(conn, title, content, budget_int, today, deadline_int, user_id)
 
@@ -200,6 +214,8 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
     if get_current_user(req) is None:
         return HTMLResponse("請先登入", status_code=401)
     
+    import model.deliveries as deliveries
+    
     project_detail = await posts.getPost(conn, id)
     if not project_detail:
         return HTMLResponse("<h1>404 - 找不到專案</h1>", status_code=404)
@@ -209,12 +225,25 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
         project_reviews = await reviews.get_reviews_by_project(conn, id)
     
     
-    if project_detail.get("create_time") and project_detail.get("deadline") is not None:
-        project_detail["deadline_date"] = project_detail["create_time"] + timedelta(days=project_detail["deadline"])
+    # 優先使用 deadline_datetime
+    if project_detail.get("deadline_datetime"):
+        project_detail["deadline_date"] = project_detail["deadline_datetime"]
+    elif project_detail.get("create_time") and project_detail.get("deadline") is not None:
+        project_detail["deadline_date"] = project_detail["create_time"] + timedelta(minutes=project_detail["deadline"])
     else:
         project_detail["deadline_date"] = None
 
     project_detail["status_text"] = translate_status(project_detail.get("status", ""))
+    
+    # 檢查是否已過截止日期
+    from datetime import datetime
+    is_deadline_passed = False
+    if project_detail.get("deadline_date"):
+        is_deadline_passed = datetime.now() > project_detail["deadline_date"]
+    
+    # 取得所有交付版本
+    delivery_versions = await deliveries.get_all_delivery_versions(conn, id)
+    
     role = get_current_role(req)
     
     current_user_db = await users.get_user_by_username(conn, user) if user else None
@@ -362,8 +391,10 @@ async def get_browse_projects_page(req: Request, conn = Depends(getDB), user:str
     project_list = await posts.get_open_projects(conn)
     
     for item in project_list:
-        if item.get('create_time') and item.get('deadline') is not None:
-            item['deadline_date'] = item['create_time'] + timedelta(days=item['deadline'])
+        if item.get('deadline_datetime'):
+            item['deadline_date'] = item['deadline_datetime']
+        elif item.get('create_time') and item.get('deadline') is not None:
+            item['deadline_date'] = item['create_time'] + timedelta(minutes=item['deadline'])
         else:
             item['deadline_date'] = None
 
@@ -374,7 +405,15 @@ async def get_browse_projects_page(req: Request, conn = Depends(getDB), user:str
     })
     
 @app.post("/api/project/bid", dependencies=[Depends(checkRole("freelancer"))])
-async def submit_bid(req: Request, conn = Depends(getDB), user_name: str = Depends(get_current_user), project_id = Form(...), bid_amount = Form(...), message: str = Form("")):
+async def submit_bid(
+    req: Request, 
+    conn = Depends(getDB), 
+    user_name: str = Depends(get_current_user), 
+    project_id = Form(...), 
+    bid_amount = Form(...), 
+    message: str = Form(""),
+    proposal_file: UploadFile = File(...)
+):
     if user_name is None:
         return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
     
@@ -384,10 +423,50 @@ async def submit_bid(req: Request, conn = Depends(getDB), user_name: str = Depen
     
     freelancer_id = freelancer['id']
     
+    # 驗證檔案格式
+    if not proposal_file.filename.lower().endswith('.pdf'):
+        return JSONResponse(status_code=400, content={"success": False, "message": "提案計畫書必須為 PDF 格式"})
+    
     try:
-        await bids.create_bid(conn, project_id, freelancer_id, bid_amount, message)
+        from datetime import datetime
         
+        # 檢查專案狀態和截止日期
         project_detail = await posts.getPost(conn, project_id)
+        if not project_detail:
+            return JSONResponse(status_code=404, content={"success": False, "message": "找不到專案"})
+        
+        if project_detail['status'] != 'open':
+            return JSONResponse(status_code=400, content={"success": False, "message": "此專案已不接受報價"})
+        
+        # 檢查截止日期
+        deadline_dt = None
+        if project_detail.get('deadline_datetime'):
+            deadline_dt = project_detail['deadline_datetime']
+        elif project_detail.get('create_time') and project_detail.get('deadline'):
+            deadline_dt = project_detail['create_time'] + timedelta(minutes=project_detail['deadline'])
+        
+        if deadline_dt and datetime.now() > deadline_dt:
+            return JSONResponse(status_code=400, content={"success": False, "message": "很抱歉，此專案已過截止日期，無法提交報價"})
+        
+        # 處理檔名防止覆蓋：使用 專案ID_接案人ID_時間戳_原始檔名
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_filename = re.sub(r'[<>:"/\\|?*\x00-\x1F]', '_', proposal_file.filename)
+        unique_filename = f"proposal_{project_id}_{freelancer_id}_{timestamp}_{safe_filename}"
+        
+        # 儲存檔案
+        upload_dir = "html/uploads/proposals"
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        with open(file_path, "wb") as buffer:
+            content = await proposal_file.read()
+            buffer.write(content)
+        
+        # 儲存相對路徑
+        relative_path = f"uploads/proposals/{unique_filename}"
+        
+        await bids.create_bid(conn, project_id, freelancer_id, bid_amount, message, relative_path)
+        
         client_user = await users.get_user_by_username(conn, project_detail['client_username'])
         client_id = client_user['id']
         
@@ -469,6 +548,8 @@ async def reject_project(
         return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
 
     try:
+        import model.deliveries as deliveries
+        
         project = await posts.getPost(conn, project_id)
         client_id = await posts.getUseridFromPost(conn, project_id)
         
@@ -476,6 +557,11 @@ async def reject_project(
             raise HTTPException(status_code=403, detail="您沒有權限執行此操作")
         if project['status'] != 'delivered':
             raise HTTPException(status_code=400, detail="此專案並非在『已交付』狀態")
+
+        # 標記最新版本為已拒絕
+        latest_version = await deliveries.get_latest_delivery_version(conn, project_id)
+        if latest_version:
+            await deliveries.update_delivery_status(conn, latest_version['id'], 'rejected')
 
         await posts.update_project_status(conn, project_id, 'rejected')
         
@@ -512,6 +598,8 @@ async def deliver_project(
         return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
 
     try:
+        import model.deliveries as deliveries
+        
         current_user = await users.get_user_by_username(conn, user_name)
         project_detail = await posts.getPost(conn, project_id)
         client_id = await posts.getUseridFromPost(conn, project_id)
@@ -528,32 +616,49 @@ async def deliver_project(
         if delivery_file.filename is None:
             raise HTTPException(status_code=400, detail="上傳的檔案缺少檔名")
         
-        safe_name = safeFilename(delivery_file.filename)
+        # 取得下一個版本號
+        latest_version = await deliveries.get_latest_version_number(conn, project_id)
+        next_version = latest_version + 1
         
-        # upload_dir = "html/uploads/deliveries"
-        # os.makedirs(upload_dir, exist_ok=True) 
-        # file_path_for_db = f"uploads/deliveries/{project_id}_{safe_name}"
-        # full_save_path = os.path.join(upload_dir, f"{project_id}_{safe_name}")
+        # 處理檔名防止覆蓋：使用 專案ID_版本號_時間戳_原始檔名
+        timestamp = date.today().strftime("%Y%m%d_%H%M%S")
+        safe_name = re.sub(r'[<>:"/\\|?*\x00-\x1F]', '_', delivery_file.filename)
+        unique_filename = f"delivery_{project_id}_v{next_version}_{timestamp}_{safe_name}"
+        
+        upload_dir = "html/uploads/deliveries"
+        os.makedirs(upload_dir, exist_ok=True) 
+        file_path_for_db = f"uploads/deliveries/{unique_filename}"
+        full_save_path = os.path.join(upload_dir, unique_filename)
 
-        # with open(full_save_path, "wb") as buffer:
-        #     buffer.write(await delivery_file.read())
-
-        # await posts.update_project_delivery(conn, project_id, file_path_for_db)
+        with open(full_save_path, "wb") as buffer:
+            buffer.write(await delivery_file.read())
+        
+        # 創建新版本記錄
+        await deliveries.create_delivery_version(
+            conn, 
+            project_id, 
+            current_user['id'], 
+            file_path_for_db, 
+            next_version
+        )
+        
+        # 更新專案狀態為已交付
+        await posts.update_project_delivery(conn, project_id, file_path_for_db)
         
         await notifications.create_notification(
             conn,
             user_id=client_id["user_id"],
-            message=f"接案人已對您的專案「{project_detail['title']}」提交檔案。",
+            message=f"接案人已對您的專案「{project_detail['title']}」提交檔案（版本 {next_version}）。",
             link=f"/page/my-projects/read/{project_id}"
         )
         
-        return JSONResponse(status_code=200, content={"success": True, "message": "結案檔案上傳成功！已通知委託人。"})
+        return JSONResponse(status_code=200, content={"success": True, "message": f"結案檔案版本 {next_version} 上傳成功！已通知委託人。"})
 
     except HTTPException as e:
         raise e
     except Exception as e:
         await conn.rollback()
-        print(f": {e}")
+        print(f"交付錯誤: {e}")
         return JSONResponse(status_code=500, content={"success": False, "message": f"伺服器錯誤: {str(e)}"})
     
 
@@ -573,8 +678,10 @@ async def get_my_jobs_page(req: Request, conn = Depends(getDB), user_name:str=De
     project_list = await posts.get_projects_by_freelancer(conn, freelancer_id)
     
     for item in project_list:
-        if item.get('create_time') and item.get('deadline') is not None:
-            item['deadline_date'] = item['create_time'] + timedelta(days=item['deadline'])
+        if item.get('deadline_datetime'):
+            item['deadline_date'] = item['deadline_datetime']
+        elif item.get('create_time') and item.get('deadline') is not None:
+            item['deadline_date'] = item['create_time'] + timedelta(minutes=item['deadline'])
         else:
             item['deadline_date'] = None
         
@@ -597,12 +704,19 @@ async def complete_project(
         return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
 
     try:
+        import model.deliveries as deliveries
+        
         project = await posts.getPost(conn, project_id)
         if not project or project['client_username'] != user_name:
             raise HTTPException(status_code=403, detail="您沒有權限執行此操作")
         
         if project['status'] != 'delivered':
             raise HTTPException(status_code=400, detail="此專案並非在『已交付』狀態")
+
+        # 標記最新版本為已接受
+        latest_version = await deliveries.get_latest_delivery_version(conn, project_id)
+        if latest_version:
+            await deliveries.update_delivery_status(conn, latest_version['id'], 'accepted')
 
         await posts.update_project_status(conn, project_id, 'completed')
         
@@ -642,8 +756,10 @@ async def get_history_page(req: Request, conn = Depends(getDB), user:str=Depends
     history_items = await posts.get_history_projects(conn, user_id, role)
     
     for item in history_items:
-        if item.get('create_time') and item.get('deadline') is not None:
-            item['deadline_date'] = item['create_time'] + timedelta(days=item['deadline'])
+        if item.get('deadline_datetime'):
+            item['deadline_date'] = item['deadline_datetime']
+        elif item.get('create_time') and item.get('deadline') is not None:
+            item['deadline_date'] = item['create_time'] + timedelta(minutes=item['deadline'])
         else:
             item['deadline_date'] = None
         item['status_text'] = translate_status(item.get('status', ''))

@@ -3,7 +3,7 @@ from psycopg.rows import dict_row
 
 async def get_bids_for_project(conn, project_id):
     async with conn.cursor(row_factory=dict_row) as cur:
-        sql="select b.id, b.bid_amount, b.message, b.created_at, b.status, u.username as freelancer_username, u.id as freelancer_id from bids as b join users as u on b.freelancer_id = u.id where b.project_id = %s order by b.bid_amount asc"
+        sql="select b.id, b.bid_amount, b.message, b.created_at, b.status, b.proposal_file_path, u.username as freelancer_username, u.id as freelancer_id from bids as b join users as u on b.freelancer_id = u.id where b.project_id = %s order by b.bid_amount asc"
         await cur.execute(sql, (project_id,))
         rows = await cur.fetchall()
         return rows
@@ -17,15 +17,15 @@ async def check_bid(conn, project_id, freelancer_id):
         else:
             return False
 
-async def create_bid(conn, project_id, freelancer_id, bid_amount, message: str):
+async def create_bid(conn, project_id, freelancer_id, bid_amount, message: str, proposal_file_path: str = None):
     async with conn.cursor(row_factory=dict_row) as cur:
         sql_check = "SELECT 1 FROM bids WHERE project_id = %s AND freelancer_id = %s"
         await cur.execute(sql_check, (project_id, freelancer_id))
         if await cur.fetchone():
             raise Exception("您已經對此專案報價")
         
-        sql_insert = "INSERT INTO bids (project_id, freelancer_id, bid_amount, message, status) VALUES (%s, %s, %s, %s, 'pending')"
-        await cur.execute(sql_insert, (project_id, freelancer_id, bid_amount, message))
+        sql_insert = "INSERT INTO bids (project_id, freelancer_id, bid_amount, message, status, proposal_file_path) VALUES (%s, %s, %s, %s, 'pending', %s)"
+        await cur.execute(sql_insert, (project_id, freelancer_id, bid_amount, message, proposal_file_path))
         
 async def get_bid_details(conn, bid_id):
     async with conn.cursor(row_factory=dict_row) as cur:
