@@ -13,16 +13,16 @@ import model.posts as posts
 import model.users as users
 import model.bids as bids
 import model.notifications as notifications
-import model.reviews as reviews
 import security
 
-from datetime import date, timedelta, datetime
+from datetime import date
+from datetime import timedelta
 from psycopg.rows import dict_row
 
 import os
 import re
 
-MAX_DEADLINE_DAYS = 365
+
 
 app = FastAPI()
 
@@ -128,11 +128,8 @@ async def get_my_projects_page(req: Request, conn = Depends(getDB), user:str=Dep
     role_text = translate_role(myRole)
 
     for item in myList:
-        # 優先使用 deadline_datetime，如果不存在則回退到舊的計算方式
-        if item.get('deadline_datetime'):
-            item['deadline_date'] = item['deadline_datetime']
-        elif item.get('create_time') and item.get('deadline') is not None:
-            item['deadline_date'] = item['create_time'] + timedelta(minutes=item['deadline'])
+        if item.get('create_time') and item.get('deadline') is not None:
+            item['deadline_date'] = item['create_time'] + timedelta(days=item['deadline'])
         else:
             item['deadline_date'] = None
 
@@ -161,42 +158,19 @@ async def get_create_project_page(req: Request, user:str=Depends(get_current_use
     })
 
 @app.post("/page/create-project")
-async def create_project(req: Request, conn = Depends(getDB), user_name: str = Depends(get_current_user),title: str = Form(...),content: str = Form(...),budget = Form(...),deadline: str = Form(...)):
+async def create_project(req: Request, conn = Depends(getDB), user_name: str = Depends(get_current_user),title: str = Form(...),content: str = Form(...),budget = Form(...),deadline = Form(...)):
     if user_name is None:
         return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
     try:
-        if budget <= 0:
-            raise HTTPException(status_code=400, detail="您所輸入的預算必須大於 0")
-        if not float(budget).is_integer():
-            raise HTTPException(status_code=400, detail="預算必須為整數，不可包含小數點")
-        
         today = date.today()
-        now = datetime.now()
-        
-        user = await users.get_user_by_username(conn, user_name)
-        
-        budget_int = int(budget)
-        deadline_int = int(deadline)
-        
 
         user = await users.get_user_by_username(conn, user_name)
         if not user:
             raise HTTPException(status_code=404, detail="找不到使用者")
         
         user_id = user['id']
-        
-        # 將前端傳來的 datetime-local 字串轉換為 datetime 物件
-        deadline_dt = datetime.fromisoformat(deadline)
-        
-        # 計算從現在到截止時間的分鐘數
-        time_diff = deadline_dt - now
-        deadline_minutes = int(time_diff.total_seconds() / 60)
-        
-        # 確保截止時間在未來
-        if deadline_minutes <= 0:
-            return JSONResponse(status_code=400, content={"success": False, "message": "截止時間必須在未來"})
 
-        await posts.createPost(conn, title, content, budget, now, deadline_minutes, user_id, deadline_dt)
+        await posts.createPost(conn, title, content, budget, today, deadline, user_id)
 
         return JSONResponse(status_code=200, content={"success": True, "message": "專案建立成功"})
         
@@ -210,89 +184,39 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
     if get_current_user(req) is None:
         return HTMLResponse("請先登入", status_code=401)
     
-    import model.deliveries as deliveries
-    
     project_detail = await posts.getPost(conn, id)
     if not project_detail:
         return HTMLResponse("<h1>404 - 找不到專案</h1>", status_code=404)
     
-    project_reviews = []
-    if project_detail["status"] == "completed":
-        project_reviews = await reviews.get_reviews_by_project(conn, id)
+
     
-    
-    # 優先使用 deadline_datetime
-    if project_detail.get("deadline_datetime"):
-        project_detail["deadline_date"] = project_detail["deadline_datetime"]
-    elif project_detail.get("create_time") and project_detail.get("deadline") is not None:
-        project_detail["deadline_date"] = project_detail["create_time"] + timedelta(minutes=project_detail["deadline"])
+    if project_detail.get("create_time") and project_detail.get("deadline") is not None:
+        project_detail["deadline_date"] = project_detail["create_time"] + timedelta(days=project_detail["deadline"])
     else:
         project_detail["deadline_date"] = None
 
     project_detail["status_text"] = translate_status(project_detail.get("status", ""))
-    
-    # 檢查是否已過截止日期
-    from datetime import datetime
-    is_deadline_passed = False
-    if project_detail.get("deadline_date"):
-        is_deadline_passed = datetime.now() > project_detail["deadline_date"]
-    
-    # 取得所有交付版本
-    delivery_versions = await deliveries.get_all_delivery_versions(conn, id)
-    
     role = get_current_role(req)
-    
-    current_user_db = await users.get_user_by_username(conn, user) if user else None
-    
-    client_id = await posts.getUseridFromPost(conn, id)
-    client_avg_score = await reviews.get_user_avg_rating(conn, client_id["user_id"])
-    project_detail["client_avg_score"] = client_avg_score
-    
-    has_reviewed = False
-    
-    if current_user_db:
-        has_reviewed = await reviews.check_if_reviewed(conn, id, current_user_db["id"])
-    
     if role == 'freelancer':
         freelancer_id = await users.get_user_by_username(conn, user)
         is_bid_exist = await bids.check_bid(conn, id, freelancer_id['id'])
-        
-        bid_status = ""
         if is_bid_exist:
             bid_id = await bids.get_bid_id(conn, id, freelancer_id['id'])
             get_bid_status = await bids.get_bid_status(conn, bid_id['id'])
-            if get_bid_status:
-                bid_status = get_bid_status['status']
-        
+            bid_status = get_bid_status['status']
+        else:
+            bid_status = ""
         return templates.TemplateResponse("partials/read_project.html", {
             "request": req,
             "project": project_detail,
             "role": role,
             "current_user": user,
             "is_bid_exist": is_bid_exist, 
-            "bid_status": bid_status,
-            "delivery_versions": delivery_versions,
-            "is_deadline_passed": is_deadline_passed,
-            "has_reviewed": has_reviewed,
-            "reviews_data": project_reviews
+            "bid_status": bid_status
         })
     else:
         bids_list = await bids.get_bids_for_project(conn, id)
-        for bid in bids_list:
-            score = await reviews.get_user_avg_rating(conn, bid["freelancer_id"])
-            bid["avg_score"] = score
-            
-        return templates.TemplateResponse("partials/read_project.html", {
-            "request":req,
-            "project": project_detail, 
-            "role": role, 
-            "bids": bids_list,
-            "current_user": user,
-            "delivery_versions": delivery_versions,
-            "is_deadline_passed": is_deadline_passed,
-            "has_reviewed": has_reviewed,
-            "reviews_data": project_reviews
-        })
+        return templates.TemplateResponse("partials/read_project.html", {"request":req,"project": project_detail, "role": role, "bids": bids_list,"current_user": user})
         
 
 @app.get("/page/my-projects/edit-form/{id}", response_class=HTMLResponse)
@@ -313,14 +237,7 @@ async def get_project_edit_form(req: Request, id:int, conn = Depends(getDB), use
 
 @app.post("/page/my-projects/edit/{id}")
 async def editPost(req: Request, id, conn = Depends(getDB), title: str=Form(...), content:str=Form(...), budget=Form(...), user:str=Depends(get_current_user)):
-    
-    if budget <= 0:
-        return JSONResponse(status_code=400, content={"success": False, "message": f"您所輸入的預算必須大於 0"})
-    if not float(budget).is_integer():
-        return JSONResponse(status_code=400, content={"success": False, "message": f"預算必須為整數，不可包含小數點"})
-    
-    budget_int = int(budget)
-    await posts.editPost(conn, title, content, budget_int, id)
+    await posts.editPost(conn, title, content, budget, id)
     
     project = await posts.getPost(conn, id)
     
@@ -393,12 +310,23 @@ async def get_browse_projects_page(req: Request, conn = Depends(getDB), user:str
     
     project_list = await posts.get_open_projects(conn)
     
+    
     for item in project_list:
-        if item.get('deadline_datetime'):
-            item['deadline_date'] = item['deadline_datetime']
-        elif item.get('create_time') and item.get('deadline') is not None:
-            item['deadline_date'] = item['create_time'] + timedelta(minutes=item['deadline'])
-        else:
+        try:
+            if item.get('create_time') and item.get('deadline') is not None:
+                
+                deadline_days = item['deadline']
+                if 0 <= deadline_days <= 3650:  
+                    item['deadline_date'] = item['create_time'] + timedelta(days=deadline_days)
+                else:
+                    
+                    item['deadline_date'] = None
+                    print(f"警告: 專案 {item.get('id')} 的 deadline 值異常: {deadline_days}")
+            else:
+                item['deadline_date'] = None
+        except (OverflowError, TypeError, ValueError) as e:
+            
+            print(f"日期計算錯誤 (專案 {item.get('id')}): {e}")
             item['deadline_date'] = None
 
     return templates.TemplateResponse("partials/browse_projects.html", {
@@ -408,15 +336,7 @@ async def get_browse_projects_page(req: Request, conn = Depends(getDB), user:str
     })
     
 @app.post("/api/project/bid", dependencies=[Depends(checkRole("freelancer"))])
-async def submit_bid(
-    req: Request, 
-    conn = Depends(getDB), 
-    user_name: str = Depends(get_current_user), 
-    project_id = Form(...), 
-    bid_amount = Form(...), 
-    message: str = Form(""),
-    proposal_file: UploadFile = File(...)
-):
+async def submit_bid(req: Request, conn = Depends(getDB), user_name: str = Depends(get_current_user), project_id = Form(...), bid_amount = Form(...), message: str = Form("")):
     if user_name is None:
         return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
     
@@ -426,51 +346,10 @@ async def submit_bid(
     
     freelancer_id = freelancer['id']
     
-    # 驗證檔案格式
-    filename_str = proposal_file.filename or ""
-    if not filename_str.lower().endswith('.pdf'):
-        return JSONResponse(status_code=400, content={"success": False, "message": "提案計畫書必須為 PDF 格式"})
-    
     try:
+        await bids.create_bid(conn, project_id, freelancer_id, bid_amount, message)
         
-        # 檢查專案狀態和截止日期
         project_detail = await posts.getPost(conn, project_id)
-        if not project_detail:
-            return JSONResponse(status_code=404, content={"success": False, "message": "找不到專案"})
-        
-        if project_detail['status'] != 'open':
-            return JSONResponse(status_code=400, content={"success": False, "message": "此專案已不接受報價"})
-        
-        # 檢查截止日期
-        deadline_dt = None
-        if project_detail.get('deadline_datetime'):
-            deadline_dt = project_detail['deadline_datetime']
-        elif project_detail.get('create_time') and project_detail.get('deadline'):
-            deadline_dt = project_detail['create_time'] + timedelta(minutes=project_detail['deadline'])
-        
-        if deadline_dt and datetime.now() > deadline_dt:
-            return JSONResponse(status_code=400, content={"success": False, "message": "很抱歉，此專案已過截止日期，無法提交報價"})
-        
-        # 處理檔名防止覆蓋：使用 專案ID_接案人ID_時間戳_原始檔名
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        safe_filename = re.sub(r'[<>:"/\\|?*\x00-\x1F]', '_', filename_str)
-        unique_filename = f"proposal_{project_id}_{freelancer_id}_{timestamp}_{safe_filename}"
-        
-        # 儲存檔案
-        upload_dir = "html/uploads/proposals"
-        os.makedirs(upload_dir, exist_ok=True)
-        file_path = os.path.join(upload_dir, unique_filename)
-        
-        with open(file_path, "wb") as buffer:
-            content = await proposal_file.read()
-            buffer.write(content)
-        
-        # 儲存相對路徑
-        relative_path = f"uploads/proposals/{unique_filename}"
-        
-        await bids.create_bid(conn, project_id, freelancer_id, bid_amount, message, relative_path)
-        
         client_user = await users.get_user_by_username(conn, project_detail['client_username'])
         client_id = client_user['id']
         
@@ -552,8 +431,6 @@ async def reject_project(
         return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
 
     try:
-        import model.deliveries as deliveries
-        
         project = await posts.getPost(conn, project_id)
         client_id = await posts.getUseridFromPost(conn, project_id)
         
@@ -561,11 +438,6 @@ async def reject_project(
             raise HTTPException(status_code=403, detail="您沒有權限執行此操作")
         if project['status'] != 'delivered':
             raise HTTPException(status_code=400, detail="此專案並非在『已交付』狀態")
-
-        # 標記最新版本為已拒絕
-        latest_version = await deliveries.get_latest_delivery_version(conn, project_id)
-        if latest_version:
-            await deliveries.update_delivery_status(conn, latest_version['id'], 'rejected')
 
         await posts.update_project_status(conn, project_id, 'rejected')
         
@@ -602,8 +474,6 @@ async def deliver_project(
         return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
 
     try:
-        import model.deliveries as deliveries
-        
         current_user = await users.get_user_by_username(conn, user_name)
         project_detail = await posts.getPost(conn, project_id)
         client_id = await posts.getUseridFromPost(conn, project_id)
@@ -620,49 +490,32 @@ async def deliver_project(
         if delivery_file.filename is None:
             raise HTTPException(status_code=400, detail="上傳的檔案缺少檔名")
         
-        # 取得下一個版本號
-        latest_version = await deliveries.get_latest_version_number(conn, project_id)
-        next_version = latest_version + 1
-        
-        # 處理檔名防止覆蓋：使用 專案ID_版本號_時間戳_原始檔名
-        timestamp = date.today().strftime("%Y%m%d_%H%M%S")
-        safe_name = re.sub(r'[<>:"/\\|?*\x00-\x1F]', '_', delivery_file.filename)
-        unique_filename = f"delivery_{project_id}_v{next_version}_{timestamp}_{safe_name}"
+        safe_name = safeFilename(delivery_file.filename)
         
         upload_dir = "html/uploads/deliveries"
         os.makedirs(upload_dir, exist_ok=True) 
-        file_path_for_db = f"uploads/deliveries/{unique_filename}"
-        full_save_path = os.path.join(upload_dir, unique_filename)
+        file_path_for_db = f"uploads/deliveries/{project_id}_{safe_name}"
+        full_save_path = os.path.join(upload_dir, f"{project_id}_{safe_name}")
 
         with open(full_save_path, "wb") as buffer:
             buffer.write(await delivery_file.read())
-        
-        # 創建新版本記錄
-        await deliveries.create_delivery_version(
-            conn, 
-            project_id, 
-            current_user['id'], 
-            file_path_for_db, 
-            next_version
-        )
-        
-        # 更新專案狀態為已交付
+
         await posts.update_project_delivery(conn, project_id, file_path_for_db)
         
         await notifications.create_notification(
             conn,
             user_id=client_id["user_id"],
-            message=f"接案人已對您的專案「{project_detail['title']}」提交檔案（版本 {next_version}）。",
+            message=f"接案人已對您的專案「{project_detail['title']}」提交檔案。",
             link=f"/page/my-projects/read/{project_id}"
         )
         
-        return JSONResponse(status_code=200, content={"success": True, "message": f"結案檔案版本 {next_version} 上傳成功！已通知委託人。"})
+        return JSONResponse(status_code=200, content={"success": True, "message": "結案檔案上傳成功！已通知委託人。"})
 
     except HTTPException as e:
         raise e
     except Exception as e:
         await conn.rollback()
-        print(f"交付錯誤: {e}")
+        print(f": {e}")
         return JSONResponse(status_code=500, content={"success": False, "message": f"伺服器錯誤: {str(e)}"})
     
 
@@ -682,10 +535,8 @@ async def get_my_jobs_page(req: Request, conn = Depends(getDB), user_name:str=De
     project_list = await posts.get_projects_by_freelancer(conn, freelancer_id)
     
     for item in project_list:
-        if item.get('deadline_datetime'):
-            item['deadline_date'] = item['deadline_datetime']
-        elif item.get('create_time') and item.get('deadline') is not None:
-            item['deadline_date'] = item['create_time'] + timedelta(minutes=item['deadline'])
+        if item.get('create_time') and item.get('deadline') is not None:
+            item['deadline_date'] = item['create_time'] + timedelta(days=item['deadline'])
         else:
             item['deadline_date'] = None
         
@@ -708,19 +559,12 @@ async def complete_project(
         return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
 
     try:
-        import model.deliveries as deliveries
-        
         project = await posts.getPost(conn, project_id)
         if not project or project['client_username'] != user_name:
             raise HTTPException(status_code=403, detail="您沒有權限執行此操作")
         
         if project['status'] != 'delivered':
             raise HTTPException(status_code=400, detail="此專案並非在『已交付』狀態")
-
-        # 標記最新版本為已接受
-        latest_version = await deliveries.get_latest_delivery_version(conn, project_id)
-        if latest_version:
-            await deliveries.update_delivery_status(conn, latest_version['id'], 'accepted')
 
         await posts.update_project_status(conn, project_id, 'completed')
         
@@ -760,10 +604,8 @@ async def get_history_page(req: Request, conn = Depends(getDB), user:str=Depends
     history_items = await posts.get_history_projects(conn, user_id, role)
     
     for item in history_items:
-        if item.get('deadline_datetime'):
-            item['deadline_date'] = item['deadline_datetime']
-        elif item.get('create_time') and item.get('deadline') is not None:
-            item['deadline_date'] = item['create_time'] + timedelta(minutes=item['deadline'])
+        if item.get('create_time') and item.get('deadline') is not None:
+            item['deadline_date'] = item['create_time'] + timedelta(days=item['deadline'])
         else:
             item['deadline_date'] = None
         item['status_text'] = translate_status(item.get('status', ''))
@@ -879,6 +721,285 @@ async def login(req:Request, username:str=Form(...), password:str=Form(...), con
     return JSONResponse(status_code=200, content={"success": True, "message": f"登入成功！歡迎， {username}"})
 
 
+
+import model.issues as issues
+
+
+
+@app.get("/page/project/{project_id}/issues", response_class=HTMLResponse)
+async def get_project_issues_page(
+    req: Request,
+    project_id: int,
+    conn = Depends(getDB),
+    user_name: str = Depends(get_current_user)
+):
+    """顯示專案的所有 Issues"""
+    if user_name is None:
+        return HTMLResponse("請先登入", status_code=401)
+    
+    current_user = await users.get_user_by_username(conn, user_name)
+    project = await posts.getPost(conn, project_id)
+    
+    if not project:
+        return HTMLResponse("<h1>找不到專案</h1>", status_code=404)
+    
+    
+    if (project['client_username'] != user_name and 
+        project['accepted_freelancer_username'] != user_name):
+        return HTMLResponse("沒有權限", status_code=403)
+    
+    issues_list = await issues.get_issues_by_project(conn, project_id)
+    stats = await issues.get_issue_statistics(conn, project_id)
+    role = current_user['role']
+    
+    return templates.TemplateResponse("partials/project_issues.html", {
+        "request": req,
+        "project": project,
+        "issues": issues_list,
+        "stats": stats,
+        "role": role,
+        "current_user": user_name
+    })
+
+
+@app.post("/api/project/{project_id}/issue/create", dependencies=[Depends(checkRole("client"))])
+async def create_issue_api(
+    req: Request,
+    project_id: int,
+    conn = Depends(getDB),
+    user_name: str = Depends(get_current_user),
+    title: str = Form(...),
+    description: str = Form(...)
+):
+    """建立新的 Issue (僅委託人)"""
+    if user_name is None:
+        return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
+    
+    try:
+        current_user = await users.get_user_by_username(conn, user_name)
+        project = await posts.getPost(conn, project_id)
+        
+        if not project or project['client_username'] != user_name:
+            raise HTTPException(status_code=403, detail="沒有權限")
+        
+        if project['status'] != 'delivered':
+            raise HTTPException(status_code=400, detail="只有已交付的專案才能建立 Issue")
+        
+        
+        new_issue = await issues.create_issue(conn, project_id, current_user['id'], title, description)
+        
+        
+        freelancer = await users.get_user_by_username(conn, project['accepted_freelancer_username'])
+        await notifications.create_notification(
+            conn,
+            user_id=freelancer['id'],
+            message=f"專案「{project['title']}」有新的待解決事項：{title}",
+            link=f"/page/project/{project_id}/issue/{new_issue['id']}"
+        )
+        
+        return JSONResponse(status_code=201, content={
+            "success": True,
+            "message": "Issue 建立成功",
+            "issue_id": new_issue['id']
+        })
+        
+    except Exception as e:
+        await conn.rollback()
+        return JSONResponse(status_code=500, content={
+            "success": False,
+            "message": f"伺服器錯誤: {str(e)}"
+        })
+
+
+@app.get("/page/project/{project_id}/issue/{issue_id}", response_class=HTMLResponse)
+async def get_issue_detail_page(
+    req: Request,
+    project_id: int,
+    issue_id: int,
+    conn = Depends(getDB),
+    user_name: str = Depends(get_current_user)
+):
+    """顯示 Issue 詳情和留言"""
+    if user_name is None:
+        return HTMLResponse("請先登入", status_code=401)
+    
+    current_user = await users.get_user_by_username(conn, user_name)
+    project = await posts.getPost(conn, project_id)
+    issue = await issues.get_issue_by_id(conn, issue_id)
+    
+    if not project or not issue:
+        return HTMLResponse("<h1>找不到資料</h1>", status_code=404)
+    
+    
+    if (project['client_username'] != user_name and 
+        project['accepted_freelancer_username'] != user_name):
+        return HTMLResponse("沒有權限", status_code=403)
+    
+    comments = await issues.get_comments_by_issue(conn, issue_id)
+    role = current_user['role']
+    
+    return templates.TemplateResponse("partials/issue_detail.html", {
+        "request": req,
+        "project": project,
+        "issue": issue,
+        "comments": comments,
+        "role": role,
+        "current_user": user_name,
+        "user_id": current_user['id']
+    })
+
+
+@app.post("/api/issue/{issue_id}/comment")
+async def add_issue_comment_api(
+    req: Request,
+    issue_id: int,
+    conn = Depends(getDB),
+    user_name: str = Depends(get_current_user),
+    comment: str = Form(...)
+):
+    """新增 Issue 留言"""
+    if user_name is None:
+        return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
+    
+    try:
+        current_user = await users.get_user_by_username(conn, user_name)
+        issue = await issues.get_issue_by_id(conn, issue_id)
+        
+        if not issue:
+            raise HTTPException(status_code=404, detail="找不到 Issue")
+        
+        project = await posts.getPost(conn, issue['project_id'])
+        
+        
+        if (project['client_username'] != user_name and 
+            project['accepted_freelancer_username'] != user_name):
+            raise HTTPException(status_code=403, detail="沒有權限")
+        
+        
+        new_comment = await issues.create_issue_comment(conn, issue_id, current_user['id'], comment)
+        
+        
+        notify_user = None
+        if user_name == project['client_username']:
+            notify_user = await users.get_user_by_username(conn, project['accepted_freelancer_username'])
+        else:
+            notify_user = await users.get_user_by_username(conn, project['client_username'])
+        
+        if notify_user:
+            await notifications.create_notification(
+                conn,
+                user_id=notify_user['id'],
+                message=f"{user_name} 在 Issue「{issue['title']}」中留言了",
+                link=f"/page/project/{issue['project_id']}/issue/{issue_id}"
+            )
+        
+        return JSONResponse(status_code=201, content={
+            "success": True,
+            "message": "留言成功"
+        })
+        
+    except Exception as e:
+        await conn.rollback()
+        return JSONResponse(status_code=500, content={
+            "success": False,
+            "message": f"伺服器錯誤: {str(e)}"
+        })
+
+
+@app.post("/api/issue/{issue_id}/resolve", dependencies=[Depends(checkRole("client"))])
+async def resolve_issue_api(
+    req: Request,
+    issue_id: int,
+    conn = Depends(getDB),
+    user_name: str = Depends(get_current_user)
+):
+    """將 Issue 設為已解決 (僅委託人)"""
+    if user_name is None:
+        return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
+    
+    try:
+        issue = await issues.get_issue_by_id(conn, issue_id)
+        if not issue:
+            raise HTTPException(status_code=404, detail="找不到 Issue")
+        
+        project = await posts.getPost(conn, issue['project_id'])
+        
+        if project['client_username'] != user_name:
+            raise HTTPException(status_code=403, detail="沒有權限")
+        
+        
+        await issues.update_issue_status(conn, issue_id, 'resolved')
+        
+        
+        freelancer = await users.get_user_by_username(conn, project['accepted_freelancer_username'])
+        await notifications.create_notification(
+            conn,
+            user_id=freelancer['id'],
+            message=f"Issue「{issue['title']}」已被標記為已解決",
+            link=f"/page/project/{issue['project_id']}/issue/{issue_id}"
+        )
+        
+        
+        all_resolved = await issues.check_all_issues_resolved(conn, issue['project_id'])
+        
+        return JSONResponse(status_code=200, content={
+            "success": True,
+            "message": "Issue 已標記為已解決",
+            "all_resolved": all_resolved
+        })
+        
+    except Exception as e:
+        await conn.rollback()
+        return JSONResponse(status_code=500, content={
+            "success": False,
+            "message": f"伺服器錯誤: {str(e)}"
+        })
+
+
+@app.post("/api/issue/{issue_id}/reopen", dependencies=[Depends(checkRole("client"))])
+async def reopen_issue_api(
+    req: Request,
+    issue_id: int,
+    conn = Depends(getDB),
+    user_name: str = Depends(get_current_user)
+):
+    """重新開啟 Issue (僅委託人)"""
+    if user_name is None:
+        return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
+    
+    try:
+        issue = await issues.get_issue_by_id(conn, issue_id)
+        if not issue:
+            raise HTTPException(status_code=404, detail="找不到 Issue")
+        
+        project = await posts.getPost(conn, issue['project_id'])
+        
+        if project['client_username'] != user_name:
+            raise HTTPException(status_code=403, detail="沒有權限")
+        
+        await issues.update_issue_status(conn, issue_id, 'open')
+        
+        
+        freelancer = await users.get_user_by_username(conn, project['accepted_freelancer_username'])
+        await notifications.create_notification(
+            conn,
+            user_id=freelancer['id'],
+            message=f"Issue「{issue['title']}」已被重新開啟",
+            link=f"/page/project/{issue['project_id']}/issue/{issue_id}"
+        )
+        
+        return JSONResponse(status_code=200, content={
+            "success": True,
+            "message": "Issue 已重新開啟"
+        })
+        
+    except Exception as e:
+        await conn.rollback()
+        return JSONResponse(status_code=500, content={
+            "success": False,
+            "message": f"伺服器錯誤: {str(e)}"
+        })
+
 @app.post("/register")
 async def register_user(req: Request, conn = Depends(getDB), username: str = Form(...), password: str = Form(...), role: str = Form(...)):
     existin_user = await users.get_user_by_username(conn, username)
@@ -897,67 +1018,4 @@ async def register_user(req: Request, conn = Depends(getDB), username: str = For
         print(f": {e}")
         return JSONResponse(status_code=500, content={"success": False, "message": ""})
     
-    
-    
-    
-@app.post("/api/submit-review/{project_id}")
-async def submit_review(
-    req: Request,
-    project_id: int,
-    conn = Depends(getDB),
-    user_name = Depends(get_current_user),
-    score_1: int = Form(...),
-    score_2: int = Form(...),
-    score_3: int = Form(...),
-    comment: str = Form(...)
-):
-    if not user_name:
-        return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
-        
-    try:
-        current_user = await users.get_user_by_username(conn, user_name)
-        project = await posts.get_any_post_by_id(conn, project_id)
-        
-        target_user_id = None
-        target_username = None
-        target_role = ""
-        
-        #委託人
-        if current_user["id"] == project["user_id"]:
-            target_user_id = project["accepted_freelancer_id"]
-            target_username = project["accepted_freelancer_username"]
-            target_role = "freelancer"
-        elif current_user["id"] == project["accepted_freelancer_id"]:
-            target_user_id = project["user_id"]
-            target_username = project["client_username"]
-            target_role = "client"
-        else:
-            return JSONResponse(status_code=403, content={"success": False, "detail": "您無權評價此專案"})
-        
-        if project["status"] != "completed":
-            return JSONResponse(status_code=400, content={"success": False, "detail": "專案尚未結案，無法評價"})
-        
-        if await reviews.check_if_reviewed(conn, project_id, current_user["id"]):
-            return JSONResponse(status_code=400, content={"success": False, "detail": "您已經評價過此專案"})
-        
-        await reviews.create_review(conn, project_id, current_user["id"], target_user_id, target_role, score_1, score_2, score_3, comment)
-        await conn.commit()
-        
-        
-        project_title = project['title']
-        notify_msg = f"專案「{project_title}」收到了一則來自 {current_user['username']} 的新評價！"
-        notify_msg2 = f"您已完成對專案「{project_title}」合作夥伴 {target_username} 的評價！"
-        notify_link = f"/page/my-projects/read/{project_id}"
-        
-        await notifications.create_notification(conn, target_user_id, notify_msg, notify_link)
-        await notifications.create_notification(conn, current_user["id"], notify_msg2, notify_link)
-        
-        return JSONResponse(status_code=200, content={"success": True, "message": "評價送出成功！"})
-
-    except Exception as e:
-        await conn.rollback()
-        print(f"評價錯誤: {e}")
-        return JSONResponse(status_code=500, content={"success": False, "detail": f"伺服器錯誤: {str(e)}"})
-
-
 app.mount("/", StaticFiles(directory="html"))
