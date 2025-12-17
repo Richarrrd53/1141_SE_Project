@@ -13,6 +13,8 @@ import model.posts as posts
 import model.users as users
 import model.bids as bids
 import model.notifications as notifications
+import model.issues as issues
+
 import security
 
 from datetime import date
@@ -722,7 +724,6 @@ async def login(req:Request, username:str=Form(...), password:str=Form(...), con
 
 
 
-import model.issues as issues
 
 
 
