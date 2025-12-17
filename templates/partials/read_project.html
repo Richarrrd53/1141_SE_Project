@@ -18,46 +18,22 @@
         <h3>您已同意 {{ project.accepted_freelancer_username }} 接案，請等候接案人交付檔案。</h3>
     
     {% elif role == 'client' and project.status == 'delivered' %}
-		<hr>
-		<h3>結案管理</h3>
-		<p>接案人 ({{ project.accepted_freelancer_username }}) 已交付檔案,請下載審核:</p>
-    
-		<a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
-			<img src="./img/download.svg" class="icon" alt="">下載結案檔案
-		</a>
-    
-		
-		<div style="margin: 20px 0; background: #fff8dd; padding: 20px; border-radius: 15px;">
-			<h4 style="margin-top: 0;">💬 待解決事項 (Issue)</h4>
-			<p style="color: #666;">如果交付的成果有需要調整的地方,您可以建立 Issue 與接案人討論,確保最終成果符合期望。</p>
-			<button onclick="loadContent('/page/project/{{ project.id }}/issues');" 
-					style="background: #f7d344; color: #2e2e2e; margin-top: 10px;">
-				📋 管理 Issues
-			</button>
-		</div>
-    
-		<div class="btnContainer" style="justify-content: flex-start; margin-top: 20px;">
-			<button class="btn btn-danger" onclick='notifyWindow("確定要退件?(專案將退回進行中)", "確認退件", "reject_delivery", {{ project.id }}, true);'>
-				退件
-			</button>
-			<button class="btn btn-success" onclick='notifyWindow("確認接受此結案檔案?(專案將結案)", "接受結案", "accept_delivery", {{ project.id }}, false);'>
-				接受結案
-			</button>
-		</div>
-
-	
-	{% elif role == 'freelancer' and project.status == 'delivered' %}
-		<h3 style="color: #0077b6;">您已上傳結案檔案,請等待委託人審核。</h3>
-    
-		
-		<div style="margin: 20px 0; background: #def4ff; padding: 20px; border-radius: 15px;">
-			<h4 style="margin-top: 0;">💬 待解決事項 (Issue)</h4>
-			<p style="color: #666;">委託人可能會建立 Issue 來討論需要調整的部分,請隨時關注並回覆。</p>
-			<button onclick="loadContent('/page/project/{{ project.id }}/issues');" 
-					style="background: #0077b6; margin-top: 10px;">
-				📋 查看 Issues
-			</button>
-		</div>
+        <hr>
+        <h3>結案管理</h3>
+        <p>接案人 ({{ project.accepted_freelancer_username }}) 已交付檔案，請下載審核：</p>
+        
+        <a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
+            <img src="./img/download.svg" class="icon" alt="">下載結案檔案
+        </a>
+        
+        <div class="btnContainer" style="justify-content: flex-start; margin-top: 20px;">
+            <button class="btn btn-danger" onclick='notifyWindow("確定要退件？(專案將退回進行中)", "確認退件", "reject_delivery", {{ project.id }}, true);'>
+                退件
+            </button>
+            <button class="btn btn-success" onclick='notifyWindow("確認接受此結案檔案？(專案將結案)", "接受結案", "accept_delivery", {{ project.id }}, false);'>
+                接受結案
+            </button>
+        </div>
     
     {% elif role == 'client' and project.status == 'completed'%}
         <p>接案人 ({{ project.accepted_freelancer_username }}) 已交付檔案，並結案：</p>
