@@ -72,13 +72,27 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     let vmenuTimer;
     $("vmenuContainer").addEventListener("mouseover", () => {
+        clearTimeout(vmenuTimer);
         vmenuTimer = setTimeout(() => {
-            $("label-check").checked = false;
-            $("label-check2").click();
+            if(!$("label-check").checked){
+                $("label-check2").click();
+            }
         }, 500);
     });
     $("vmenuContainer").addEventListener("mouseleave", () => {
-        vmenuTimer = clearTimeout();
+        clearTimeout(vmenuTimer);
+    });
+    let mainTimer;
+    $("mainContent").addEventListener("mouseover", () => {
+        clearTimeout(mainTimer);
+        mainTimer = setTimeout(() => {
+            if($("label-check").checked){
+                $("label-check2").click();
+            }
+        }, 1000);
+    });
+    $("mainContent").addEventListener("mouseleave", () => {
+        clearTimeout(mainTimer);
     });
 });
 
