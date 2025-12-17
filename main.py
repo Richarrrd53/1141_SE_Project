@@ -16,15 +16,13 @@ import model.notifications as notifications
 import model.reviews as reviews
 import security
 
-from datetime import date
-from datetime import timedelta
+from datetime import date, timedelta, datetime
 from psycopg.rows import dict_row
 
 import os
 import re
 
 MAX_DEADLINE_DAYS = 365
-#test
 
 app = FastAPI()
 
@@ -172,17 +170,14 @@ async def create_project(req: Request, conn = Depends(getDB), user_name: str = D
         if not float(budget).is_integer():
             raise HTTPException(status_code=400, detail="預算必須為整數，不可包含小數點")
         
-        if deadline <= 0:
-            raise HTTPException(status_code=400, detail="截止日期必須大於0天！")
-        if not float(deadline).is_integer():
-            raise HTTPException(status_code=400, detail="截止日期必須為整數天數")
-        if deadline > MAX_DEADLINE_DAYS:
-            raise HTTPException(status_code=400, detail=f"截止日期不可超過 {MAX_DEADLINE_DAYS} 天")
+        today = date.today()
+        now = datetime.now()
+        
+        user = await users.get_user_by_username(conn, user_name)
         
         budget_int = int(budget)
         deadline_int = int(deadline)
         
-        today = date.today()
 
         user = await users.get_user_by_username(conn, user_name)
         if not user:
@@ -261,12 +256,14 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
     if role == 'freelancer':
         freelancer_id = await users.get_user_by_username(conn, user)
         is_bid_exist = await bids.check_bid(conn, id, freelancer_id['id'])
+        
+        bid_status = ""
         if is_bid_exist:
             bid_id = await bids.get_bid_id(conn, id, freelancer_id['id'])
             get_bid_status = await bids.get_bid_status(conn, bid_id['id'])
-            bid_status = get_bid_status['status']
-        else:
-            bid_status = ""
+            if get_bid_status:
+                bid_status = get_bid_status['status']
+        
         return templates.TemplateResponse("partials/read_project.html", {
             "request": req,
             "project": project_detail,
@@ -275,10 +272,7 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
             "is_bid_exist": is_bid_exist, 
             "bid_status": bid_status,
             "delivery_versions": delivery_versions,
-            "is_deadline_passed": is_deadline_passed
-        })
-    else:
-        bids_list = await bids.get_bids_for_project(conn, id)
+            "is_deadline_passed": is_deadline_passed,
             "has_reviewed": has_reviewed,
             "reviews_data": project_reviews
         })
@@ -287,6 +281,7 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
         for bid in bids_list:
             score = await reviews.get_user_avg_rating(conn, bid["freelancer_id"])
             bid["avg_score"] = score
+            
         return templates.TemplateResponse("partials/read_project.html", {
             "request":req,
             "project": project_detail, 
@@ -294,7 +289,7 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
             "bids": bids_list,
             "current_user": user,
             "delivery_versions": delivery_versions,
-            "is_deadline_passed": is_deadline_passed
+            "is_deadline_passed": is_deadline_passed,
             "has_reviewed": has_reviewed,
             "reviews_data": project_reviews
         })
@@ -320,9 +315,9 @@ async def get_project_edit_form(req: Request, id:int, conn = Depends(getDB), use
 async def editPost(req: Request, id, conn = Depends(getDB), title: str=Form(...), content:str=Form(...), budget=Form(...), user:str=Depends(get_current_user)):
     
     if budget <= 0:
-        raise HTTPException(status_code=400, detail="您所輸入的預算必須大於 0")
+        return JSONResponse(status_code=400, content={"success": False, "message": f"您所輸入的預算必須大於 0"})
     if not float(budget).is_integer():
-        raise HTTPException(status_code=400, detail="預算必須為整數，不可包含小數點")
+        return JSONResponse(status_code=400, content={"success": False, "message": f"預算必須為整數，不可包含小數點"})
     
     budget_int = int(budget)
     await posts.editPost(conn, title, content, budget_int, id)
@@ -432,11 +427,11 @@ async def submit_bid(
     freelancer_id = freelancer['id']
     
     # 驗證檔案格式
-    if not proposal_file.filename.lower().endswith('.pdf'):
+    filename_str = proposal_file.filename or ""
+    if not filename_str.lower().endswith('.pdf'):
         return JSONResponse(status_code=400, content={"success": False, "message": "提案計畫書必須為 PDF 格式"})
     
     try:
-        from datetime import datetime
         
         # 檢查專案狀態和截止日期
         project_detail = await posts.getPost(conn, project_id)
@@ -458,7 +453,8 @@ async def submit_bid(
         
         # 處理檔名防止覆蓋：使用 專案ID_接案人ID_時間戳_原始檔名
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_filename = re.sub(r'[<>:"/\\|?*\x00-\x1F]', '_', proposal_file.filename)
+        
+        safe_filename = re.sub(r'[<>:"/\\|?*\x00-\x1F]', '_', filename_str)
         unique_filename = f"proposal_{project_id}_{freelancer_id}_{timestamp}_{safe_filename}"
         
         # 儲存檔案
