@@ -356,6 +356,12 @@ img{
     font-size: 48px;
 }
 
+.content-area h3{
+    font-weight: bold;
+    color: #232F4A;
+    font-size: 28px;
+}
+
 .content-area button{
     background: #2F4189;
     color: white;
@@ -966,97 +972,81 @@ img{
 
 
 
-
-.issue-card {
-    transition: all 0.3s cubic-bezier(.4,0,.2,1);
-    cursor: pointer;
-}
-
-.issue-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-.issue-card:active {
-    transform: scale(0.98);
-}
-
-
-.issue-status-badge {
-    display: inline-block;
-    padding: 6px 12px;
-    border-radius: 12px;
-    font-size: 14px;
+.form-select{
+    background-color: transparent;
+    width: 290px; 
+    height: 50px;
+    border: 0;
+    outline: 0;
+    font-size: 20px;
+    color: #464f63;
     font-weight: bold;
+    padding: 10px;
+    transition: all 0.5s cubic-bezier(.4,0,.2,1);
+    border: none;
+    border-radius: 20px;
+    &, &::picker(select) {
+        background-color: transparent;
+        border: 0;
+        outline: 0;
+        font-size: 20px;
+        color: #464f63;
+        font-weight: bold;
+        padding: 10px;
+        transition: all 0.5s cubic-bezier(.4,0,.2,1);
+        border: none;
+        border-radius: 20px;
+        appearance: base-select;
+        -webkit-appearance: base-select;
+        -moz-appearance: base-select;
+    }
 }
 
-.issue-status-open {
-    background-color: #fff8dd;
-    color: #f7d344;
+.form-select::picker-icon {
+    color: #999999;
+    transition: all 0.5s cubic-bezier(.4,0,.2,1);
 }
 
-.issue-status-resolved {
-    background-color: #cbffcc;
-    color: #4CAF50;
+.form-select:open::picker-icon {
+    rotate: 180deg;
 }
 
-
-.comment-block {
-    transition: all 0.3s cubic-bezier(.4,0,.2,1);
-}
-
-.comment-block:hover {
-    transform: translateX(5px);
-}
-
-
-.issue-stats {
+option {
     display: flex;
+    justify-content: flex-start;
     gap: 20px;
-    padding: 15px 20px;
-    background: #f8f8f8;
-    border-radius: 15px;
-    margin-bottom: 20px;
+
+    background: #fff;
+    padding: 10px;
+    transition: all 0.5s cubic-bezier(.4,0,.2,1);
 }
 
-.issue-stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
+option:first-of-type {
+    border-radius: 20px 20px 0 0;
 }
 
-.issue-stat-number {
-    font-size: 24px;
-    font-weight: bold;
+option:last-of-type {
+    border-radius: 0 0 20px 20px;
 }
 
-.issue-stat-label {
-    font-size: 14px;
-    color: #666;
+option:not(option:last-of-type) {
+    border-bottom: none;
 }
 
-
-.comment-form-container {
-    background: #f8f8f8;
-    padding: 25px;
-    border-radius: 15px;
-    margin-top: 20px;
+option:nth-of-type(odd) {
+    background: white;
 }
 
-.comment-form-container textarea {
-    resize: vertical;
-    min-height: 100px;
+option:hover{
+    background: rgb(216, 216, 216);
 }
 
+option:focus {
+    background: #2F4189;
+    color: #fff;
+}
 
-@media (max-width: 768px) {
-    .issue-stats {
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .issue-card {
-        padding: 15px;
-    }
+option .icon {
+    font-size: 1.6rem;
+    text-box: trim-both cap alphabetic;
 }

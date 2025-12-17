@@ -299,6 +299,9 @@ function notifyWindow(str, str2, fun, n, color){
     else if (fun == "restore") {
         btn2.onclick = () => { submitRestoreProject(n) };
     }
+    else if (fun == "create_review") {
+        btn2.onclick = () => { submitCreateReview(n) };
+    }
     if(fun != "alert"){
         btnContainer.appendChild(btn2);
     }
@@ -457,7 +460,7 @@ async function submitDelivery(n){
             }, 500);
         } else {
             setTimeout(() => {
-                notifyWindow("錯誤："+data.message,"","alert",0,false);
+                notifyWindow("錯誤："+data.detail,"","alert",0,false);
             }, 500);
         }
     } catch (error) {
@@ -488,7 +491,7 @@ async function submitAcceptDelivery(project_id) {
             loadContent(`/page/my-projects/read/${project_id}`); // 
         } else {
             setTimeout(() => {
-                notifyWindow("錯誤："+data.message,"","alert",0,false);
+                notifyWindow("錯誤："+data.detail,"","alert",0,false);
             }, 500);
         }
     } catch (error) {
@@ -518,7 +521,7 @@ async function submitRejectDelivery(project_id) {
             loadContent(`/page/my-projects/read/${project_id}`); // 
         } else {
             setTimeout(() => {
-                notifyWindow("錯誤："+data.message,"","alert",0,false);
+                notifyWindow("錯誤："+data.detail,"","alert",0,false);
             }, 500);
         }
     } catch (error) {
@@ -548,13 +551,49 @@ async function submitRestoreProject(project_id) {
             loadContent("/page/history");
         } else {
             setTimeout(() => {
-                notifyWindow("錯誤："+data.message,"","alert",0,false);
+                notifyWindow("錯誤："+data.detail,"","alert",0,false);
             }, 500);
         }
     } catch (error) {
         console.error(':', error);
     }
 }
+
+async function submitCreateReview(project_id) {
+    notifyCancel($("notifyWindowBG"), $("notifyWindow"));
+    const formElement = $("create-review-form");
+    const formData = new FormData(formElement);
+    try{
+        $("loading").style.transition = "all 0.5s cubic-bezier(.33,1.53,.69,.99)";
+        setTimeout(() => {
+            $("loading").style.opacity = 1;
+            $("loading").style.scale = 1;
+            $("loading").style.filter = "blur(0)";
+        }, 10);
+        const response = await fetch(`/api/submit-review/${project_id}`, {
+            method: "POST",
+            body: formData,
+            credentials: "include"
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            setTimeout(() => {
+                notifyWindow(data.message,"","alert",0,false);
+            }, 500);
+            loadContent(`/page/my-projects/read/${project_id}`);
+        } else {
+            setTimeout(() => {
+                notifyWindow("錯誤："+data.detail,"","alert",0,false);
+                loadContent(`/page/my-projects/read/${project_id}`);
+            }, 500);
+        }
+    } catch (error) {
+        console.error(':', error);
+    }
+}
+
+
 
 async function checkNotifications() {
     const notifyBell = $("notifyBell");
@@ -609,285 +648,3 @@ async function loadContentAndMarkRead(link) {
     
     checkNotifications();
 }
-
-
-async function submitCreateIssue(projectId) {
-    console.log('submitCreateIssue 被調用, projectId:', projectId);
-    
-    const formElement = document.getElementById('create-issue-form');
-    const titleInput = document.getElementById('issue-title');
-    const descInput = document.getElementById('issue-description');
-    const submitBtn = document.getElementById('create-issue-btn');
-    
-    if (!formElement) {
-        console.error('找不到表單元素');
-        alert('表單載入錯誤，請重新整理頁面');
-        return;
-    }
-    
-    
-    if (!titleInput || !titleInput.value.trim()) {
-        alert('請輸入標題');
-        if (titleInput) titleInput.focus();
-        return;
-    }
-    
-    if (!descInput || !descInput.value.trim()) {
-        alert('請輸入詳細說明');
-        if (descInput) descInput.focus();
-        return;
-    }
-    
-    
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerText = '建立中...';
-    }
-    
-    const formData = new FormData(formElement);
-    
-    try {
-        
-        $("loading").style.transition = "all 0.5s cubic-bezier(.33,1.53,.69,.99)";
-        setTimeout(() => {
-            $("loading").style.opacity = 1;
-            $("loading").style.scale = 1;
-            $("loading").style.filter = "blur(0)";
-        }, 10);
-        
-        console.log('發送請求到:', `/api/project/${projectId}/issue/create`);
-        
-        const response = await fetch(`/api/project/${projectId}/issue/create`, {
-            method: "POST",
-            body: formData,
-            credentials: "include"
-        });
-        
-        console.log('回應狀態:', response.status);
-        
-        const data = await response.json();
-        console.log('回應數據:', data);
-        
-        if (response.ok) {
-            
-            loadContent(`/page/project/${projectId}/issues`);
-            setTimeout(() => {
-                notifyWindow("Issue 建立成功!", "", "alert", 0, false);
-            }, 500);
-        } else {
-            
-            console.error('API 錯誤:', data);
-            setTimeout(() => {
-                notifyWindow("錯誤: " + (data.message || '建立失敗'), "", "alert", 0, false);
-            }, 500);
-            
-            
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerText = '建立 Issue';
-            }
-            
-            
-            $("loading").style.opacity = 0;
-            $("loading").style.scale = 0;
-            $("loading").style.filter = "blur(20px)";
-        }
-    } catch (error) {
-        console.error('建立 Issue 時發生錯誤:', error);
-        alert("發生網路錯誤: " + error.message);
-        
-        
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerText = '建立 Issue';
-        }
-        
-        
-        $("loading").style.opacity = 0;
-        $("loading").style.scale = 0;
-        $("loading").style.filter = "blur(20px)";
-    }
-}
-
-async function submitComment(issueId) {
-    console.log('submitComment 被調用, issueId:', issueId);
-    
-    const formElement = document.getElementById('add-comment-form');
-    const commentInput = document.getElementById('comment-text');
-    
-    if (!formElement || !commentInput) {
-        alert('表單載入錯誤');
-        return;
-    }
-    
-    const formData = new FormData(formElement);
-    
-    if (!formData.get('comment').trim()) {
-        alert('留言內容不能為空');
-        commentInput.focus();
-        return;
-    }
-    
-    try {
-        $("loading").style.transition = "all 0.5s cubic-bezier(.33,1.53,.69,.99)";
-        setTimeout(() => {
-            $("loading").style.opacity = 1;
-            $("loading").style.scale = 1;
-            $("loading").style.filter = "blur(0)";
-        }, 10);
-        
-        const response = await fetch(`/api/issue/${issueId}/comment`, {
-            method: "POST",
-            body: formData,
-            credentials: "include"
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            
-            const currentPath = window.location.pathname;
-            const pathParts = currentPath.split('/');
-            const projectIdIndex = pathParts.indexOf('project');
-            const projectId = projectIdIndex >= 0 ? pathParts[projectIdIndex + 1] : null;
-            
-            if (projectId) {
-                loadContent(`/page/project/${projectId}/issue/${issueId}`);
-            } else {
-                location.reload();
-            }
-            
-            setTimeout(() => {
-                notifyWindow("留言成功!", "", "alert", 0, false);
-            }, 500);
-        } else {
-            setTimeout(() => {
-                notifyWindow("錯誤: " + data.message, "", "alert", 0, false);
-            }, 500);
-            
-            $("loading").style.opacity = 0;
-            $("loading").style.scale = 0;
-            $("loading").style.filter = "blur(20px)";
-        }
-    } catch (error) {
-        console.error('新增留言時發生錯誤:', error);
-        alert("發生網路錯誤: " + error.message);
-        
-        $("loading").style.opacity = 0;
-        $("loading").style.scale = 0;
-        $("loading").style.filter = "blur(20px)";
-    }
-}
-
-async function resolveIssue(issueId) {
-    console.log('resolveIssue 被調用, issueId:', issueId);
-    
-    try {
-        $("loading").style.transition = "all 0.5s cubic-bezier(.33,1.53,.69,.99)";
-        setTimeout(() => {
-            $("loading").style.opacity = 1;
-            $("loading").style.scale = 1;
-            $("loading").style.filter = "blur(0)";
-        }, 10);
-        
-        const response = await fetch(`/api/issue/${issueId}/resolve`, {
-            method: "POST",
-            credentials: "include"
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            
-            const currentPath = window.location.pathname;
-            const pathParts = currentPath.split('/');
-            const projectIdIndex = pathParts.indexOf('project');
-            const projectId = projectIdIndex >= 0 ? pathParts[projectIdIndex + 1] : null;
-            
-            if (projectId) {
-                loadContent(`/page/project/${projectId}/issue/${issueId}`);
-            } else {
-                location.reload();
-            }
-            
-            setTimeout(() => {
-                notifyWindow(data.message, "", "alert", 0, false);
-                if (data.all_resolved) {
-                    setTimeout(() => {
-                        notifyWindow("🎉 所有 Issue 都已解決!您現在可以結案了", "", "alert", 0, false);
-                    }, 2500);
-                }
-            }, 500);
-        } else {
-            setTimeout(() => {
-                notifyWindow("錯誤: " + data.message, "", "alert", 0, false);
-            }, 500);
-            
-            $("loading").style.opacity = 0;
-            $("loading").style.scale = 0;
-            $("loading").style.filter = "blur(20px)";
-        }
-    } catch (error) {
-        console.error('標記 Issue 時發生錯誤:', error);
-        alert("發生網路錯誤: " + error.message);
-        
-        $("loading").style.opacity = 0;
-        $("loading").style.scale = 0;
-        $("loading").style.filter = "blur(20px)";
-    }
-}
-
-async function reopenIssue(issueId) {
-    console.log('reopenIssue 被調用, issueId:', issueId);
-    
-    try {
-        $("loading").style.transition = "all 0.5s cubic-bezier(.33,1.53,.69,.99)";
-        setTimeout(() => {
-            $("loading").style.opacity = 1;
-            $("loading").style.scale = 1;
-            $("loading").style.filter = "blur(0)";
-        }, 10);
-        
-        const response = await fetch(`/api/issue/${issueId}/reopen`, {
-            method: "POST",
-            credentials: "include"
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            
-            const currentPath = window.location.pathname;
-            const pathParts = currentPath.split('/');
-            const projectIdIndex = pathParts.indexOf('project');
-            const projectId = projectIdIndex >= 0 ? pathParts[projectIdIndex + 1] : null;
-            
-            if (projectId) {
-                loadContent(`/page/project/${projectId}/issue/${issueId}`);
-            } else {
-                location.reload();
-            }
-            
-            setTimeout(() => {
-                notifyWindow(data.message, "", "alert", 0, false);
-            }, 500);
-        } else {
-            setTimeout(() => {
-                notifyWindow("錯誤: " + data.message, "", "alert", 0, false);
-            }, 500);
-            
-            $("loading").style.opacity = 0;
-            $("loading").style.scale = 0;
-            $("loading").style.filter = "blur(20px)";
-        }
-    } catch (error) {
-        console.error('重新開啟 Issue 時發生錯誤:', error);
-        alert("發生網路錯誤: " + error.message);
-        
-        $("loading").style.opacity = 0;
-        $("loading").style.scale = 0;
-        $("loading").style.filter = "blur(20px)";
-    }
-}
-
-console.log('Issue 相關函數已載入');

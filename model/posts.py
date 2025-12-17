@@ -12,7 +12,8 @@ async def getList(conn, user_id):
           		p.id, 
             	p.title, 
              	p.create_time, 
-              	p.deadline, 
+              	p.deadline,
+               	p.deadline_datetime, 
                	p.budget
             FROM posts AS p
             JOIN users AS client ON p.user_id = client.id
@@ -32,9 +33,11 @@ async def getPost(conn, id):
                 p.content, 
                 p.budget, 
                 p.create_time, 
-                p.deadline, 
+                p.deadline,
+                p.deadline_datetime, 
                 p.status,
                 p.delivery_file_path,
+                p.user_id,
                 client.username AS client_username,
                 freelancer.username AS accepted_freelancer_username 
             FROM posts AS p
@@ -61,6 +64,8 @@ async def get_any_post_by_id(conn, id: int):
 					p.deadline, 
 					p.status,
 					p.delivery_file_path,
+                    p.user_id,
+                    p.accepted_freelancer_id,
 					client.username AS client_username,
 					freelancer.username AS accepted_freelancer_username 
 				FROM posts AS p
@@ -91,10 +96,14 @@ async def deletePost(conn, id):
 		await cur.execute(sql2,(id,))
 		return True
 
-async def createPost(conn, title, content, budget, create_time, deadline, user_id):
+async def createPost(conn, title, content, budget, create_time, deadline, user_id, deadline_datetime=None):
 	async with conn.cursor() as cur:
-		sql="insert into posts (title, content, budget, create_time, deadline, user_id) values (%s,%s,%s,%s,%s,%s);"
-		await cur.execute(sql,(title, content, budget, create_time, deadline, user_id))
+		if deadline_datetime:
+			sql="insert into posts (title, content, budget, create_time, deadline, user_id, deadline_datetime) values (%s,%s,%s,%s,%s,%s,%s);"
+			await cur.execute(sql,(title, content, budget, create_time, deadline, user_id, deadline_datetime))
+		else:
+			sql="insert into posts (title, content, budget, create_time, deadline, user_id) values (%s,%s,%s,%s,%s,%s);"
+			await cur.execute(sql,(title, content, budget, create_time, deadline, user_id))
 		return True
 	
 async def editPost(conn, title, content, budget, id):
@@ -115,7 +124,8 @@ async def get_open_projects(conn):
            		p.title, 
              	p.budget, 
               	p.create_time, 
-               	p.deadline, 
+               	p.deadline,
+               	p.deadline_datetime, 
                 u.username AS client_username 
 			FROM posts AS p 
 			INNER JOIN users AS u ON p.user_id = u.id 
@@ -149,6 +159,7 @@ async def get_projects_by_freelancer(conn, freelancer_id):
                 p.budget, 
                 p.create_time, 
                 p.deadline,
+                p.deadline_datetime,
                 p.status,
                 u.username AS client_username 
             FROM posts AS p
@@ -200,7 +211,8 @@ async def get_history_projects(conn, user_id, role):
 					p.id, 
 					p.title, 
 					p.create_time, 
-					p.deadline, 
+					p.deadline,
+					p.deadline_datetime, 
 					p.budget
 				FROM posts AS p
 				JOIN users AS client ON p.user_id = client.id
@@ -215,6 +227,7 @@ async def get_history_projects(conn, user_id, role):
 					p.budget, 
 					p.create_time, 
 					p.deadline,
+					p.deadline_datetime,
 					p.status,
 					u.username AS client_username 
 				FROM posts AS p
