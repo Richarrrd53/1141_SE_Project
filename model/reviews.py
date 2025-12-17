@@ -48,9 +48,9 @@ async def get_reviews_by_project(conn, project_id):
     async with conn.cursor(row_factory=dict_row) as cur:
         sql = """
             SELECT r.*, u.username as reviewer_name 
-            FROM reviews r 
-            JOIN users u ON r.to_user_id = u.id 
-            WHERE r.project_id = %s 
+            FROM reviews r
+            JOIN users u ON r.from_user_id = u.id
+            WHERE r.project_id = %s
         """
         await cur.execute(sql, (project_id,))
         return await cur.fetchall()

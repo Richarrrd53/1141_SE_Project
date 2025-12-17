@@ -254,8 +254,8 @@
                 <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                     <div>
                         <strong>{{ review.reviewer_name }}</strong> 
-                        <span style="color: #666; font-size: 0.9em;">
-                            ({{ '委託人' if review.source_role == 'client' else '接案人' }})
+                        <span style="margin: 0;" class="status-pill role-{{'freelancer' if review.target_role == 'client' else 'client'}}">
+                            {{ '接案人' if review.target_role == 'client' else '委託人' }}
                         </span>
                     </div>
                     <div style="color: gold; font-weight: bold;">
