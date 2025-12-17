@@ -70,7 +70,16 @@ document.addEventListener("DOMContentLoaded", () => {
             $("notifyBell").children[0].src = $("notifyBell").children[0].src.replace("focus", "blur");
         }
     });
-
+    let vmenuTimer;
+    $("vmenuContainer").addEventListener("mouseover", () => {
+        vmenuTimer = setTimeout(() => {
+            $("label-check").checked = false;
+            $("label-check2").click();
+        }, 500);
+    });
+    $("vmenuContainer").addEventListener("mouseleave", () => {
+        vmenuTimer = clearTimeout();
+    });
 });
 
 
