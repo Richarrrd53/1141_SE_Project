@@ -26,7 +26,7 @@
                         <td>{{ item.client_username }}</td>
                         <td>{{ item.budget }}</a></td>
                         <td>{{ item.create_time.strftime('%Y-%m-%d') }}</td>
-                        <td> {{ item.deadline_date.strftime('%Y-%m-%d %H:%M') if item.deadline_date else 'N/A' }}</td>
+                        <td> {{ item.deadline_date.strftime('%Y-%m-%d') if item.deadline_date else 'N/A' }}</td>
                     </tr>
                 {% endfor %}
             {% endif %}
