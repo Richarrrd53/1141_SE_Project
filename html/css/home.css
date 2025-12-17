@@ -356,6 +356,12 @@ img{
     font-size: 48px;
 }
 
+.content-area h3{
+    font-weight: bold;
+    color: #232F4A;
+    font-size: 28px;
+}
+
 .content-area button{
     background: #2F4189;
     color: white;
@@ -962,4 +968,85 @@ img{
 .notify-item {
     margin-bottom: 5px;
     transition: all 0.3s cubic-bezier(.33,1.53,.69,.99);
+}
+
+
+
+.form-select{
+    background-color: transparent;
+    width: 290px; 
+    height: 50px;
+    border: 0;
+    outline: 0;
+    font-size: 20px;
+    color: #464f63;
+    font-weight: bold;
+    padding: 10px;
+    transition: all 0.5s cubic-bezier(.4,0,.2,1);
+    border: none;
+    border-radius: 20px;
+    &, &::picker(select) {
+        background-color: transparent;
+        border: 0;
+        outline: 0;
+        font-size: 20px;
+        color: #464f63;
+        font-weight: bold;
+        padding: 10px;
+        transition: all 0.5s cubic-bezier(.4,0,.2,1);
+        border: none;
+        border-radius: 20px;
+        appearance: base-select;
+        -webkit-appearance: base-select;
+        -moz-appearance: base-select;
+    }
+}
+
+.form-select::picker-icon {
+    color: #999999;
+    transition: all 0.5s cubic-bezier(.4,0,.2,1);
+}
+
+.form-select:open::picker-icon {
+    rotate: 180deg;
+}
+
+option {
+    display: flex;
+    justify-content: flex-start;
+    gap: 20px;
+
+    background: #fff;
+    padding: 10px;
+    transition: all 0.5s cubic-bezier(.4,0,.2,1);
+}
+
+option:first-of-type {
+    border-radius: 20px 20px 0 0;
+}
+
+option:last-of-type {
+    border-radius: 0 0 20px 20px;
+}
+
+option:not(option:last-of-type) {
+    border-bottom: none;
+}
+
+option:nth-of-type(odd) {
+    background: white;
+}
+
+option:hover{
+    background: rgb(216, 216, 216);
+}
+
+option:focus {
+    background: #2F4189;
+    color: #fff;
+}
+
+option .icon {
+    font-size: 1.6rem;
+    text-box: trim-both cap alphabetic;
 }
