@@ -23,11 +23,7 @@ from psycopg.rows import dict_row
 import os
 import re
 
-<<<<<<< HEAD
 MAX_DEADLINE_DAYS = 365
-=======
-
->>>>>>> parent of 95074d4 (mm)
 
 app = FastAPI()
 
