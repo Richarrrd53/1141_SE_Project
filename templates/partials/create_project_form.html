@@ -29,9 +29,20 @@
         </div>
 
         <div>
-            <label for="deadline">截止時間(天):</label><br>
-            <input type="number" id="deadline" name="deadline" value="30" required>
+            <label for="deadline">截止日期與時間:</label><br>
+            <input type="datetime-local" id="deadline" name="deadline" required>
+            <small style="color: #666;">請選擇投標截止的日期與時間</small>
         </div>
+        <script>
+            // 設定預設截止時間為 7 天後
+            const now = new Date();
+            now.setDate(now.getDate() + 7);
+            const defaultDeadline = now.toISOString().slice(0, 16);
+            document.getElementById('deadline').value = defaultDeadline;
+            // 設定最小時間為現在
+            const minDate = new Date().toISOString().slice(0, 16);
+            document.getElementById('deadline').min = minDate;
+        </script>
 
         <button type="button" id="submitBtn" onclick='notifyWindow("是否發布這則委託專案？", "發布", "create", 0, false);'>
             發布委託

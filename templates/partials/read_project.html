@@ -5,7 +5,7 @@
         <tr>
             <th>委託人：{{ project.client_username }}</th>
             <th>發布日期：{{ project.create_time.strftime('%Y-%m-%d') }}</th>
-            <th>截止日期：{{ project.deadline_date.strftime('%Y-%m-%d') if project.deadline_date else 'N/A' }}</th>
+            <th>截止日期：{{ project.deadline_date.strftime('%Y-%m-%d %H:%M') if project.deadline_date else 'N/A' }}</th>
             <th><span class="status-pill link-{{project.status}}">{{ project.status_text }}</span></th>
         </tr>
     </table>
@@ -18,52 +18,101 @@
         <h3>您已同意 {{ project.accepted_freelancer_username }} 接案，請等候接案人交付檔案。</h3>
     
     {% elif role == 'client' and project.status == 'delivered' %}
-		<hr>
-		<h3>結案管理</h3>
-		<p>接案人 ({{ project.accepted_freelancer_username }}) 已交付檔案,請下載審核:</p>
-    
-		<a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
-			<img src="./img/download.svg" class="icon" alt="">下載結案檔案
-		</a>
-    
-		
-		<div style="margin: 20px 0; background: #fff8dd; padding: 20px; border-radius: 15px;">
-			<h4 style="margin-top: 0;">💬 待解決事項 (Issue)</h4>
-			<p style="color: #666;">如果交付的成果有需要調整的地方,您可以建立 Issue 與接案人討論,確保最終成果符合期望。</p>
-			<button onclick="loadContent('/page/project/{{ project.id }}/issues');" 
-					style="background: #f7d344; color: #2e2e2e; margin-top: 10px;">
-				📋 管理 Issues
-			</button>
-		</div>
-    
-		<div class="btnContainer" style="justify-content: flex-start; margin-top: 20px;">
-			<button class="btn btn-danger" onclick='notifyWindow("確定要退件?(專案將退回進行中)", "確認退件", "reject_delivery", {{ project.id }}, true);'>
-				退件
-			</button>
-			<button class="btn btn-success" onclick='notifyWindow("確認接受此結案檔案?(專案將結案)", "接受結案", "accept_delivery", {{ project.id }}, false);'>
-				接受結案
-			</button>
-		</div>
-
-	
-	{% elif role == 'freelancer' and project.status == 'delivered' %}
-		<h3 style="color: #0077b6;">您已上傳結案檔案,請等待委託人審核。</h3>
-    
-		
-		<div style="margin: 20px 0; background: #def4ff; padding: 20px; border-radius: 15px;">
-			<h4 style="margin-top: 0;">💬 待解決事項 (Issue)</h4>
-			<p style="color: #666;">委託人可能會建立 Issue 來討論需要調整的部分,請隨時關注並回覆。</p>
-			<button onclick="loadContent('/page/project/{{ project.id }}/issues');" 
-					style="background: #0077b6; margin-top: 10px;">
-				📋 查看 Issues
-			</button>
-		</div>
+        <hr>
+        <h3>結案管理</h3>
+        <p>接案人 ({{ project.accepted_freelancer_username }}) 已交付檔案，請下載審核：</p>
+        
+        {% if delivery_versions %}
+            <h4>所有版本歷史：</h4>
+            <table id="contentTable" style="margin-bottom: 20px;">
+                <thead>
+                    <tr>
+                        <th style="font-weight: bold; padding: 10px;">版本</th>
+                        <th style="font-weight: bold; padding: 10px;">上傳時間</th>
+                        <th style="font-weight: bold; padding: 10px;">檔案</th>
+                        <th style="font-weight: bold; padding: 10px;">狀態</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for version in delivery_versions %}
+                    <tr>
+                        <td>版本 {{ version.version }}</td>
+                        <td>{{ version.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <a href="/{{ version.file_path }}" target="_blank" class="btn btn-download" style="font-size: 12px; padding: 5px 10px;">
+                                <img src="./img/download.svg" class="icon" alt="" style="width: 14px; height: 14px;">下載
+                            </a>
+                        </td>
+                        <td>
+                            {% if version.status == 'rejected' %}
+                                <span style="color: #dc3545;">已退回</span>
+                            {% elif version.status == 'accepted' %}
+                                <span style="color: #28a745;">已接受</span>
+                            {% else %}
+                                <span style="color: #ffc107;">待審核</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% elif project.delivery_file_path %}
+            <a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
+                <img src="./img/download.svg" class="icon" alt="">下載結案檔案
+            </a>
+        {% endif %}
+        
+        <div class="btnContainer" style="justify-content: flex-start; margin-top: 20px;">
+            <button class="btn btn-danger" onclick='notifyWindow("確定要退件？(專案將退回進行中)", "確認退件", "reject_delivery", {{ project.id }}, true);'>
+                退件
+            </button>
+            <button class="btn btn-success" onclick='notifyWindow("確認接受此結案檔案？(專案將結案)", "接受結案", "accept_delivery", {{ project.id }}, false);'>
+                接受結案
+            </button>
+        </div>
     
     {% elif role == 'client' and project.status == 'completed'%}
         <p>接案人 ({{ project.accepted_freelancer_username }}) 已交付檔案，並結案：</p>
-        <a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
-            <img src="./img/download.svg" class="icon" alt="">下載結案檔案
-        </a>
+        
+        {% if delivery_versions %}
+            <h4>所有版本歷史：</h4>
+            <table id="contentTable" style="margin-bottom: 20px;">
+                <thead>
+                    <tr>
+                        <th style="font-weight: bold; padding: 10px;">版本</th>
+                        <th style="font-weight: bold; padding: 10px;">上傳時間</th>
+                        <th style="font-weight: bold; padding: 10px;">檔案</th>
+                        <th style="font-weight: bold; padding: 10px;">狀態</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for version in delivery_versions %}
+                    <tr>
+                        <td>版本 {{ version.version }}</td>
+                        <td>{{ version.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <a href="/{{ version.file_path }}" target="_blank" class="btn btn-download" style="font-size: 12px; padding: 5px 10px;">
+                                <img src="./img/download.svg" class="icon" alt="" style="width: 14px; height: 14px;">下載
+                            </a>
+                        </td>
+                        <td>
+                            {% if version.status == 'rejected' %}
+                                <span style="color: #dc3545;">已退回</span>
+                            {% elif version.status == 'accepted' %}
+                                <span style="color: #28a745;">已接受</span>
+                            {% else %}
+                                <span style="color: #ffc107;">待審核</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% elif project.delivery_file_path %}
+            <a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
+                <img src="./img/download.svg" class="icon" alt="">下載結案檔案
+            </a>
+        {% endif %}
 
     {% elif role == 'client' and project.status == 'rejected'%}
         <h3 class="text-danger">您已退件 {{ project.accepted_freelancer_username }} 的檔案，請等候接案人重新交付。</h3>
@@ -89,6 +138,7 @@
                     <th style="font-weight: bold; padding: 10px;">提案者</th>
                     <th style="font-weight: bold; padding: 10px;">報價</th>
                     <th style="font-weight: bold; padding: 10px;">留言</th>
+                    <th style="font-weight: bold; padding: 10px;">提案計畫書</th>
                     <th></th>
                 </tr>
             </thead>
@@ -98,6 +148,15 @@
                     <td>{{ bid.freelancer_username }}</td>
                     <td>${{ bid.bid_amount }}</td>
                     <td>{{ bid.message }}</td>
+                    <td>
+                        {% if bid.proposal_file_path %}
+                            <a href="/{{ bid.proposal_file_path }}" target="_blank" class="btn btn-download" style="font-size: 12px; padding: 5px 10px;">
+                                <img src="./img/download.svg" class="icon" alt="" style="width: 14px; height: 14px;">下載 PDF
+                            </a>
+                        {% else %}
+                            <span style="color: #999;">未提供</span>
+                        {% endif %}
+                    </td>
                     <td>
                         {% if project.status == 'open' %}
                             <button class="btn btn-primary" onclick='notifyWindow("確定要接受此報價？ (專案將鎖定並開始)", "接受", "accept_bid", {{ bid.id }}, false);'>
@@ -119,9 +178,12 @@
 
     {% elif role == 'freelancer' and project.status == 'open' %}
         <hr>
-        {%if is_bid_exist == False%}
+        {% if is_deadline_passed %}
+            <h3 class="text-danger">⚠️ 此專案已過截止日期，無法再提交報價</h3>
+            <p style="color: #666;">截止時間：{{ project.deadline_date.strftime('%Y-%m-%d %H:%M') if project.deadline_date else 'N/A' }}</p>
+        {% elif is_bid_exist == False %}
             <h3>有意願承包嗎？請提出承包意願 (報價)</h3>
-            <form id="create-bid-form">
+            <form id="create-bid-form" enctype="multipart/form-data">
                 <input type="hidden" name="project_id" value="{{ project.id }}">
                 <div class="form-group">
                     <label for="bid_amount">您的報價 (TWD):</label>
@@ -130,6 +192,11 @@
                 <div class="form-group">
                     <label for="message">留言 (告訴委託人您為什麼適合，選填):</label>
                     <textarea id="message" name="message" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="proposal_file">提案計畫書 (PDF，必填):</label>
+                    <input type="file" id="proposal_file" name="proposal_file" accept=".pdf" required>
+                    <small style="color: #666;">僅接受 PDF 格式</small>
                 </div>
                 <button type="button" class="btn btn-primary" id="submitBidBtn" onclick='notifyWindow("是否確認送出這則報價？", "送出", "sendBid", 0, false);'>送出報價</button>
             </form>
@@ -163,122 +230,6 @@
         
     {% elif role == 'freelancer' and project.status == 'completed' %}
         <h3 style="color: #4CAF50;">🎉 恭喜！專案已結案。</h3>
-    {% endif %}
-    
-    {% if project.status == 'completed' and not has_reviewed %}
-        <br>
-        <div class="container" style="background-color: #f9f9f9; padding: 20px; border-radius: 10px;">
-            <h3>合作評價</h3>
-            <p>專案已結束，請對合作夥伴進行評價 (此評價將公開顯示於對方檔案)。</p>
-
-            <form id="create-review-form">
-                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                    {% if role == 'client' %}
-                        <div class="form-group">
-                            <label>1. 產出品質 (1-5):</label>
-                            <select class="form-select" name="score_1" required>
-                                <option value="5">5 ★ - 成品完美，超出預期</option>
-                                <option value="4">4 ★ - 品質優良，符合標準</option>
-                                <option value="3">3 ★ - 品質尚可，符合基本需求</option>
-                                <option value="2">2 ★ - 品質有瑕疵/需多處修改</option>
-                                <option value="1">1 ★ - 品質低落/無法使用</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>2. 執行效率 (1-5):</label>
-                            <select class="form-select" name="score_2" required>
-                                <option value="5">5 ★ - 提前完成交件</option>
-                                <option value="4">4 ★ - 準時完成</option>
-                                <option value="3">3 ★ - 進度稍慢但可接受</option>
-                                <option value="2">2 ★ - 進度落後/需催促</option>
-                                <option value="1">1 ★ - 嚴重拖延/無故消失</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>3. 合作態度 (1-5):</label>
-                            <select class="form-select" name="score_3" required>
-                                <option value="5">5 ★ - 積極主動回報進度</option>
-                                <option value="4">4 ★ - 配合度高，好溝通</option>
-                                <option value="3">3 ★ - 溝通順暢</option>
-                                <option value="2">2 ★ - 被動/不太回訊息</option>
-                                <option value="1">1 ★ - 已讀不回/難以聯繫</option>
-                            </select>
-                        </div>
-                    {% else %}
-                        <div class="form-group">
-                            <label>1. 需求合理性 (1-5):</label>
-                            <select class="form-select" name="score_1" required>
-                                <option value="5">5 ★ - 需求非常明確且固定</option>
-                                <option value="4">4 ★ - 需求清晰，僅微調</option>
-                                <option value="3">3 ★ - 需求尚可理解</option>
-                                <option value="2">2 ★ - 需求模糊或頻繁變更</option>
-                                <option value="1">1 ★ - 需求前後矛盾/無理</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>2. 驗收難度 (1-5):</label>
-                            <select class="form-select" name="score_2" required>
-                                <option value="5">5 ★ - 驗收非常乾脆迅速</option>
-                                <option value="4">4 ★ - 驗收標準明確合理</option>
-                                <option value="3">3 ★ - 驗收流程符合一般標準</option>
-                                <option value="2">2 ★ - 過於挑剔/標準不一</option>
-                                <option value="1">1 ★ - 惡意刁難/拖延驗收</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>3. 合作態度 (1-5):</label>
-                            <select class="form-select" name="score_3" required>
-                                <option value="5">5 ★ - 非常尊重專業且友善</option>
-                                <option value="4">4 ★ - 溝通禮貌客氣</option>
-                                <option value="3">3 ★ - 態度正常</option>
-                                <option value="2">2 ★ - 態度冷淡/回覆緩慢</option>
-                                <option value="1">1 ★ - 態度惡劣/難以溝通</option>
-                            </select>
-                        </div>
-                    {% endif %}
-                </div>
-
-                <div class="form-group">
-                    <label>質性評論 (必填):</label>
-                    <textarea name="comment" rows="4" required placeholder="請寫下您對這次合作的具體看法..."></textarea>
-                </div>
-                <button type="button" class="btn btn-primary" onclick='notifyWindow("是否送出你對{{project.accepted_freelancer_username}}的評價？", "送出", "create_review", {{project.id}}, false);'>送出評價</button>
-            </form>
-        </div>
-    {% elif project.status == 'completed' and reviews_data %}
-    <hr>
-    <h3>評價紀錄</h3>
-    <div class="reviews-container" style="display: flex; flex-direction: column; gap: 15px;">
-        {% for review in reviews_data %}
-            <div class="review-card" style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background-color: #fff;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                    <div>
-                        <strong>{{ review.reviewer_name }}</strong> 
-                        <span style="margin: 0;" class="status-pill role-{{'freelancer' if review.target_role == 'client' else 'client'}}">
-                            {{ '接案人' if review.target_role == 'client' else '委託人' }}
-                        </span>
-                    </div>
-                    <div style="color: gold; font-weight: bold;">
-                        ★ {{ ((review.score_1 + review.score_2 + review.score_3) / 3) | round(1) }}
-                    </div>
-                </div>
-                
-                <div style="font-size: 0.9em; color: #555; margin-bottom: 8px;">
-                    各項評分：
-                    品質/需求: {{ review.score_1 }} | 
-                    效率/驗收: {{ review.score_2 }} | 
-                    態度: {{ review.score_3 }}
-                </div>
-                
-                <div style="background-color: #f5f5f5; padding: 10px; border-radius: 5px;">
-                    {{ review.comment }}
-                </div>
-                <div style="text-align: right; font-size: 0.8em; color: #aaa; margin-top: 5px;">
-                    {{ review.created_at }}
-                </div>
-            </div>
-        {% endfor %}
-    </div>
     {% endif %}
 
     <div class="btnContainer" style="justify-content: flex-start; margin-top: 2rem;">
