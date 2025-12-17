@@ -6,4 +6,3 @@ jinja2
 psycopg[binary]
 psycopg-pool
 bcrypt
-itsdangerous
