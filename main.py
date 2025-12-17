@@ -13,7 +13,6 @@ import model.posts as posts
 import model.users as users
 import model.bids as bids
 import model.notifications as notifications
-import model.reviews as reviews
 import security
 
 from datetime import date
@@ -23,7 +22,7 @@ from psycopg.rows import dict_row
 import os
 import re
 
-MAX_DEADLINE_DAYS = 365
+#test
 
 app = FastAPI()
 
@@ -163,21 +162,6 @@ async def create_project(req: Request, conn = Depends(getDB), user_name: str = D
     if user_name is None:
         return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
     try:
-        if budget <= 0:
-            raise HTTPException(status_code=400, detail="您所輸入的預算必須大於 0")
-        if not float(budget).is_integer():
-            raise HTTPException(status_code=400, detail="預算必須為整數，不可包含小數點")
-        
-        if deadline <= 0:
-            raise HTTPException(status_code=400, detail="截止日期必須大於0天！")
-        if not float(deadline).is_integer():
-            raise HTTPException(status_code=400, detail="截止日期必須為整數天數")
-        if deadline > MAX_DEADLINE_DAYS:
-            raise HTTPException(status_code=400, detail=f"截止日期不可超過 {MAX_DEADLINE_DAYS} 天")
-        
-        budget_int = int(budget)
-        deadline_int = int(deadline)
-        
         today = date.today()
 
         user = await users.get_user_by_username(conn, user_name)
@@ -186,7 +170,7 @@ async def create_project(req: Request, conn = Depends(getDB), user_name: str = D
         
         user_id = user['id']
 
-        await posts.createPost(conn, title, content, budget_int, today, deadline_int, user_id)
+        await posts.createPost(conn, title, content, budget, today, deadline, user_id)
 
         return JSONResponse(status_code=200, content={"success": True, "message": "專案建立成功"})
         
@@ -204,10 +188,7 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
     if not project_detail:
         return HTMLResponse("<h1>404 - 找不到專案</h1>", status_code=404)
     
-    project_reviews = []
-    if project_detail["status"] == "completed":
-        project_reviews = await reviews.get_reviews_by_project(conn, id)
-    
+
     
     if project_detail.get("create_time") and project_detail.get("deadline") is not None:
         project_detail["deadline_date"] = project_detail["create_time"] + timedelta(days=project_detail["deadline"])
@@ -216,18 +197,6 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
 
     project_detail["status_text"] = translate_status(project_detail.get("status", ""))
     role = get_current_role(req)
-    
-    current_user_db = await users.get_user_by_username(conn, user) if user else None
-    
-    client_id = await posts.getUseridFromPost(conn, id)
-    client_avg_score = await reviews.get_user_avg_rating(conn, client_id["user_id"])
-    project_detail["client_avg_score"] = client_avg_score
-    
-    has_reviewed = False
-    
-    if current_user_db:
-        has_reviewed = await reviews.check_if_reviewed(conn, id, current_user_db["id"])
-    
     if role == 'freelancer':
         freelancer_id = await users.get_user_by_username(conn, user)
         is_bid_exist = await bids.check_bid(conn, id, freelancer_id['id'])
@@ -243,24 +212,11 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
             "role": role,
             "current_user": user,
             "is_bid_exist": is_bid_exist, 
-            "bid_status": bid_status,
-            "has_reviewed": has_reviewed,
-            "reviews_data": project_reviews
+            "bid_status": bid_status
         })
     else:
         bids_list = await bids.get_bids_for_project(conn, id)
-        for bid in bids_list:
-            score = await reviews.get_user_avg_rating(conn, bid["freelancer_id"])
-            bid["avg_score"] = score
-        return templates.TemplateResponse("partials/read_project.html", {
-            "request":req,
-            "project": project_detail, 
-            "role": role, 
-            "bids": bids_list,
-            "current_user": user,
-            "has_reviewed": has_reviewed,
-            "reviews_data": project_reviews
-        })
+        return templates.TemplateResponse("partials/read_project.html", {"request":req,"project": project_detail, "role": role, "bids": bids_list,"current_user": user})
         
 
 @app.get("/page/my-projects/edit-form/{id}", response_class=HTMLResponse)
@@ -281,14 +237,7 @@ async def get_project_edit_form(req: Request, id:int, conn = Depends(getDB), use
 
 @app.post("/page/my-projects/edit/{id}")
 async def editPost(req: Request, id, conn = Depends(getDB), title: str=Form(...), content:str=Form(...), budget=Form(...), user:str=Depends(get_current_user)):
-    
-    if budget <= 0:
-        raise HTTPException(status_code=400, detail="您所輸入的預算必須大於 0")
-    if not float(budget).is_integer():
-        raise HTTPException(status_code=400, detail="預算必須為整數，不可包含小數點")
-    
-    budget_int = int(budget)
-    await posts.editPost(conn, title, content, budget_int, id)
+    await posts.editPost(conn, title, content, budget, id)
     
     project = await posts.getPost(conn, id)
     
@@ -777,67 +726,4 @@ async def register_user(req: Request, conn = Depends(getDB), username: str = For
         print(f": {e}")
         return JSONResponse(status_code=500, content={"success": False, "message": ""})
     
-    
-    
-    
-@app.post("/api/submit-review/{project_id}")
-async def submit_review(
-    req: Request,
-    project_id: int,
-    conn = Depends(getDB),
-    user_name = Depends(get_current_user),
-    score_1: int = Form(...),
-    score_2: int = Form(...),
-    score_3: int = Form(...),
-    comment: str = Form(...)
-):
-    if not user_name:
-        return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
-        
-    try:
-        current_user = await users.get_user_by_username(conn, user_name)
-        project = await posts.get_any_post_by_id(conn, project_id)
-        
-        target_user_id = None
-        target_username = None
-        target_role = ""
-        
-        #委託人
-        if current_user["id"] == project["user_id"]:
-            target_user_id = project["accepted_freelancer_id"]
-            target_username = project["accepted_freelancer_username"]
-            target_role = "freelancer"
-        elif current_user["id"] == project["accepted_freelancer_id"]:
-            target_user_id = project["user_id"]
-            target_username = project["client_username"]
-            target_role = "client"
-        else:
-            return JSONResponse(status_code=403, content={"success": False, "detail": "您無權評價此專案"})
-        
-        if project["status"] != "completed":
-            return JSONResponse(status_code=400, content={"success": False, "detail": "專案尚未結案，無法評價"})
-        
-        if await reviews.check_if_reviewed(conn, project_id, current_user["id"]):
-            return JSONResponse(status_code=400, content={"success": False, "detail": "您已經評價過此專案"})
-        
-        await reviews.create_review(conn, project_id, current_user["id"], target_user_id, target_role, score_1, score_2, score_3, comment)
-        await conn.commit()
-        
-        
-        project_title = project['title']
-        notify_msg = f"專案「{project_title}」收到了一則來自 {current_user['username']} 的新評價！"
-        notify_msg2 = f"您已完成對專案「{project_title}」合作夥伴 {target_username} 的評價！"
-        notify_link = f"/page/my-projects/read/{project_id}"
-        
-        await notifications.create_notification(conn, target_user_id, notify_msg, notify_link)
-        await notifications.create_notification(conn, current_user["id"], notify_msg2, notify_link)
-        
-        return JSONResponse(status_code=200, content={"success": True, "message": "評價送出成功！"})
-
-    except Exception as e:
-        await conn.rollback()
-        print(f"評價錯誤: {e}")
-        return JSONResponse(status_code=500, content={"success": False, "detail": f"伺服器錯誤: {str(e)}"})
-
-
 app.mount("/", StaticFiles(directory="html"))

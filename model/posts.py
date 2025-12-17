@@ -35,7 +35,6 @@ async def getPost(conn, id):
                 p.deadline, 
                 p.status,
                 p.delivery_file_path,
-                p.user_id,
                 client.username AS client_username,
                 freelancer.username AS accepted_freelancer_username 
             FROM posts AS p
@@ -62,8 +61,6 @@ async def get_any_post_by_id(conn, id: int):
 					p.deadline, 
 					p.status,
 					p.delivery_file_path,
-                    p.user_id,
-                    p.accepted_freelancer_id,
 					client.username AS client_username,
 					freelancer.username AS accepted_freelancer_username 
 				FROM posts AS p

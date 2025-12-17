@@ -299,9 +299,6 @@ function notifyWindow(str, str2, fun, n, color){
     else if (fun == "restore") {
         btn2.onclick = () => { submitRestoreProject(n) };
     }
-    else if (fun == "create_review") {
-        btn2.onclick = () => { submitCreateReview(n) };
-    }
     if(fun != "alert"){
         btnContainer.appendChild(btn2);
     }
@@ -460,7 +457,7 @@ async function submitDelivery(n){
             }, 500);
         } else {
             setTimeout(() => {
-                notifyWindow("錯誤："+data.detail,"","alert",0,false);
+                notifyWindow("錯誤："+data.message,"","alert",0,false);
             }, 500);
         }
     } catch (error) {
@@ -491,7 +488,7 @@ async function submitAcceptDelivery(project_id) {
             loadContent(`/page/my-projects/read/${project_id}`); // 
         } else {
             setTimeout(() => {
-                notifyWindow("錯誤："+data.detail,"","alert",0,false);
+                notifyWindow("錯誤："+data.message,"","alert",0,false);
             }, 500);
         }
     } catch (error) {
@@ -521,7 +518,7 @@ async function submitRejectDelivery(project_id) {
             loadContent(`/page/my-projects/read/${project_id}`); // 
         } else {
             setTimeout(() => {
-                notifyWindow("錯誤："+data.detail,"","alert",0,false);
+                notifyWindow("錯誤："+data.message,"","alert",0,false);
             }, 500);
         }
     } catch (error) {
@@ -551,49 +548,13 @@ async function submitRestoreProject(project_id) {
             loadContent("/page/history");
         } else {
             setTimeout(() => {
-                notifyWindow("錯誤："+data.detail,"","alert",0,false);
+                notifyWindow("錯誤："+data.message,"","alert",0,false);
             }, 500);
         }
     } catch (error) {
         console.error(':', error);
     }
 }
-
-async function submitCreateReview(project_id) {
-    notifyCancel($("notifyWindowBG"), $("notifyWindow"));
-    const formElement = $("create-review-form");
-    const formData = new FormData(formElement);
-    try{
-        $("loading").style.transition = "all 0.5s cubic-bezier(.33,1.53,.69,.99)";
-        setTimeout(() => {
-            $("loading").style.opacity = 1;
-            $("loading").style.scale = 1;
-            $("loading").style.filter = "blur(0)";
-        }, 10);
-        const response = await fetch(`/api/submit-review/${project_id}`, {
-            method: "POST",
-            body: formData,
-            credentials: "include"
-        });
-        const data = await response.json();
-
-        if (response.ok) {
-            setTimeout(() => {
-                notifyWindow(data.message,"","alert",0,false);
-            }, 500);
-            loadContent(`/page/my-projects/read/${project_id}`);
-        } else {
-            setTimeout(() => {
-                notifyWindow("錯誤："+data.detail,"","alert",0,false);
-                loadContent(`/page/my-projects/read/${project_id}`);
-            }, 500);
-        }
-    } catch (error) {
-        console.error(':', error);
-    }
-}
-
-
 
 async function checkNotifications() {
     const notifyBell = $("notifyBell");
