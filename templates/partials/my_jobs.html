@@ -1,35 +1,48 @@
 <section class="content-area" id="contentArea">
-    <h1>我的承包</h1>
-    <p>您已得標的所有專案（包含進行中、已交付、已結案）。</p>
+    
+    <div class="page-header" style="margin-bottom: 30px; padding-left: 10px;">
+        <h1 style="font-size: 28px; font-weight: 900; color: #111827; margin: 0;">我的承包</h1>
+        <p style="color: #6b7280; margin-top: 5px;">您已得標的所有專案（包含進行中、已交付、已結案）。</p>
+    </div>
 
-    <table id="contentTable">
-        <thead>
-            <tr>
-                <th>專案名稱</th>
-                <th>委託人</th>
-                <th>專案狀態</th>
-                <th>預算</th>
-                <th>截止日期</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% if not items %}
-                <tr>
-                    <td colspan="5" style="text-align: center; padding: 20px;">您目前沒有任何承接的專案。</td>
-                </tr>
-            {% else %}
-                {% for item in items %}
-                    <tr>
-                        <td><a onclick='loadContent("/page/my-projects/read/{{item.id}}")'> {{ item.title }}</a></td>
-                        <td> {{ item.client_username }}</td>
-                        <td><span class="link-{{item.status}}"> {{ item.status_text }}</span></td>
-                        <td> {{ item.budget }}</td>
-                        <td> {{ item.deadline_date.strftime('%Y-%m-%d %H:%M') if item.deadline_date else 'N/A' }}</td>
-                    </tr>
-                {% endfor %}
-            {% endif %}
-        </tbody>
-    </table>
+    <div class="card-grid" id="contentTable">
+        {% if not items %}
+            <div class="empty-state">
+                <img src="./img/empty_box.svg" onerror="this.style.display='none'" style="width: 50px; opacity: 0.3; margin-bottom: 10px;">
+                <p>您目前沒有任何承接的專案。</p>
+            </div>
+        {% else %}
+            {% for item in items %}
+                <div class="project-card" onclick='loadContent("/page/my-projects/read/{{item.id}}")'>
+                    
+                    <div class="card-color link-{{item.status}}">
+                        <div class="card-top">
+                            <div class="status-pill budget-text">${{ item.budget }}</div>
+                            <span class="status-pill status-{{item.status}}">
+                                {{ item.status_text }}
+                            </span>
+                        </div>
+
+                        <div class="card-body">
+                            <div class="card-title-group">
+                                <h3 class="card-title">{{ item.title }}</h3>
+                                <div class="card-id" style="font-size: 13px;">
+                                    Client: <span style="font-weight: 600; color: #4b5563;">{{ item.client_username }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <div class="date-info">
+                            <span style="color: {{'#ef4444;' if item.is_deadline_passed == True else '' }}">截止: {{ item.deadline_date.strftime('%Y-%m-%d %H:%M') if item.deadline_date else 'N/A' }}</span>
+                        </div>
+                        <div style="font-size: 18px; color: #d1d5db;">➔</div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
 </section>
 
 <div id="loading">

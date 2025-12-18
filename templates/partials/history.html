@@ -1,78 +1,101 @@
 <section class="content-area" id="contentArea">
     
-    <h1>歷史紀錄</h1>
-    <p>您所有已歷史傳案列表。</p>
+    <div class="page-header" style="margin-bottom: 30px; padding-left: 10px;">
+        <h1 style="font-size: 28px; font-weight: 900; color: #111827; margin: 0;">歷史紀錄</h1>
+        <p style="color: #6b7280; margin-top: 5px;">查看所有已結案或已刪除的專案存檔。</p>
+    </div>
+
     {% if role == 'client' %}
-    <table id="contentTable">
-        <thead>
-            <tr>
-                <th>專案名稱</th>
-                <th>狀態</th>
-                <th>預算</th>
-                <th>發布日期</th>
-                <th>截止日期</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% if not items %}
-                <tr>
-                    <td colspan="6" style="text-align: center; padding: 20px;">您目前沒有任何專案。</td>
-                </tr>
-            
-            {% else %}
-                {% for item in items %}
-                    <tr>
-                        {% if item.status == 'deleted'%}
-                        <td><span style="text-decoration: line-through"> {{ item.title }}</span></td>
-                        <td><span style="text-decoration: line-through" class="link-{{item.status}}"> {{ item.status_text }}</span></td>
-                        <td><span style="text-decoration: line-through"> {{ item.budget }}</span></td>
-                        <td><span style="text-decoration: line-through"> {{ item.create_time.strftime('%Y-%m-%d') }}</span></td>
-                        <td><span style="text-decoration: line-through"> {{ item.deadline_date.strftime('%Y-%m-%d %H:%M') if item.deadline_date else 'N/A' }}</span></td>
-                        <td><span style="text-decoration: line-through" onclick='notifyWindow("確定要復原此專案？", "復原", "restore", {{ item.id }}, false);'><img src="./img/restore.svg" alt="" class="menu-icon"></span></td>
-                        {% else %}
-                            <td><a onclick='loadContent("/page/my-projects/read/{{item.id}}")'> {{ item.title }} </a></td>
-                            <td><span class="link-{{item.status}}"> {{ item.status_text }}</span></td>
-                            <td> {{ item.budget }}</td>
-                            <td> {{ item.create_time.strftime('%Y-%m-%d') }}</td>
-                            <td> {{ item.deadline_date.strftime('%Y-%m-%d %H:%M') if item.deadline_date else 'N/A' }}</td>
+    
+    <div class="card-grid" id="contentTable">
+        {% if not items %}
+            <div class="empty-state">
+                <img src="./img/history_empty.svg" onerror="this.style.display='none'" style="width: 50px; opacity: 0.3; margin-bottom: 10px;">
+                <p>您目前沒有任何歷史專案。</p>
+            </div>
+        {% else %}
+            {% for item in items %}
+                
+                <div class="project-card {{ 'is-deleted' if item.status == 'deleted' else '' }}" 
+                     {% if item.status != 'deleted' %} onclick='loadContent("/page/my-projects/read/{{item.id}}")' {% endif %}>
+                    
+                    <div class="card-color link-{{item.status}}">
+                        <div class="card-top">
+                            <div class="status-pill budget-text">${{ item.budget }}</div>
+                            <span class="status-pill status-{{item.status}}">
+                                {{ item.status_text }}
+                            </span>
+                        </div>
+
+                        <div class="card-body">
+                            <div class="card-title-group">
+                                <h3 class="card-title">{{ item.title }}</h3>
+                                <div class="card-id">#{{ item.id }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <div class="date-info">
+                            <span>發布: {{ item.create_time.strftime('%Y-%m-%d') }}</span><br>
+                            <span>截止: {{ item.deadline_date.strftime('%Y-%m-%d') if item.deadline_date else 'N/A' }}</span>
+                        </div>
+                        
+                        {% if item.status == 'deleted' %}
+                            <div class="btn-restore" 
+                                onclick='event.stopPropagation(); notifyWindow("確定要復原此專案？(將回到列表)", "復原專案", "restore", {{ item.id }}, false);'
+                                title="復原此專案">
+                                <img src="./img/restore.svg" alt="Restore" style="filter: invert(32%) sepia(85%) saturate(452%) hue-rotate(108deg) brightness(93%) contrast(89%);">
+                            </div>
                         {% endif %}
-                    </tr>
-                {% endfor %}
-            {% endif %}
-        </tbody>
-    </table>
+                    </div>
+                </div>
+
+            {% endfor %}
+        {% endif %}
+    </div>
+
 
     {% elif role == 'freelancer' %}
-    <table id="contentTable">
-        <thead>
-            <tr>
-                <th>專案名稱</th>
-                <th>委託人</th> <th>專案狀態</th> <th>預算</th>
-                <th>截止日期</th>
-            </tr>
-        </thead>
-        
-        <tbody>
-            {% if not items %}
-                <tr>
-                    <td colspan="5" style="text-align: center; padding: 20px;">您目前沒有任何承接的專案。</td>
-                </tr>
-            
-            {% else %}
-                {% for item in items %}
-                    <tr>
-                        <td><a onclick='loadContent("/page/my-projects/read/{{item.id}}")'> {{ item.title }}</a></td>
-                        <td><a> {{ item.client_username }}</a></td>
-                        <td><a class="link-{{item.status}}"> {{ item.status_text }}</a></td>
-                        <td><a> {{ item.budget }}</a></td>
-                        <td><a> {{ item.deadline_date.strftime('%Y-%m-%d %H:%M') if item.deadline_date else 'N/A' }}</a></td>
-                    </tr>
-                {% endfor %}
-            {% endif %}
-        </tbody>
-    </table>
-    {%endif%}
+    
+    <div class="card-grid" id="contentTable">
+        {% if not items %}
+            <div class="empty-state">
+                <p>您目前沒有任何承接的歷史專案。</p>
+            </div>
+        {% else %}
+            {% for item in items %}
+                <div class="project-card" onclick='loadContent("/page/my-projects/read/{{item.id}}")'>
+                    
+                    <div class="card-color link-{{item.status}}">
+                        <div class="card-top">
+                            <div class="status-pill budget-text">${{ item.budget }}</div>
+                            <span class="status-pill status-{{item.status}}">
+                                {{ item.status_text }}
+                            </span>
+                        </div>
+
+                        <div class="card-body">
+                            <div class="card-title-group">
+                                <h3 class="card-title">{{ item.title }}</h3>
+                                <div class="card-id">Client: {{ item.client_username }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <div class="date-info">
+                            <span>截止於: {{ item.deadline_date.strftime('%Y-%m-%d') if item.deadline_date else 'N/A' }}</span>
+                        </div>
+                        <div style="font-size: 18px; color: #d1d5db;">➔</div>
+                    </div>
+
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    {% endif %}
 </section>
 
 <div id="loading">
@@ -80,7 +103,6 @@
         <div class="jelly-triangle__dot"></div>
         <div class="jelly-triangle__traveler"></div>
     </div>
-
     <svg width="0" height="0" class="jelly-maker">
         <defs>
             <filter id="uib-jelly-triangle-ooze">

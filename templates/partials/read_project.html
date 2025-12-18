@@ -1,260 +1,614 @@
 <section class="content-area" id="contentArea">
-    <h1>{{ project.title }}</h1>
-    
-    <table id="project-info">
-        <tr>
-            <th>委託人：{{ project.client_username }}</th>
-            <th>發布日期：{{ project.create_time.strftime('%Y-%m-%d') }}</th>
-            <th>截止日期：{{ project.deadline_date.strftime('%Y-%m-%d %H:%M') if project.deadline_date else 'N/A' }}</th>
-            <th><span class="status-pill link-{{project.status}}">{{ project.status_text }}</span></th>
-        </tr>
-    </table>
-    
-    {% if project.accepted_freelancer_username %}
-        <p><strong>已承接：</strong> {{ project.accepted_freelancer_username }}</p>
-    {% endif %}
 
-    {% if role == 'client' and project.status == 'in_progress' %}
-        <h3>您已同意 {{ project.accepted_freelancer_username }} 接案，請等候接案人交付檔案。</h3>
-    
-    {% elif role == 'client' and project.status == 'delivered' %}
-        <hr>
-        <h3>結案管理</h3>
-        <p>接案人 ({{ project.accepted_freelancer_username }}) 已交付檔案，請下載審核：</p>
-        
-        {% if delivery_versions %}
-            <h4>所有版本歷史：</h4>
-            <table id="contentTable" style="margin-bottom: 20px;">
-                <thead>
-                    <tr>
-                        <th style="font-weight: bold; padding: 10px;">版本</th>
-                        <th style="font-weight: bold; padding: 10px;">上傳時間</th>
-                        <th style="font-weight: bold; padding: 10px;">檔案</th>
-                        <th style="font-weight: bold; padding: 10px;">狀態</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for version in delivery_versions %}
-                    <tr>
-                        <td>版本 {{ version.version }}</td>
-                        <td>{{ version.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td>
-                            <a href="/{{ version.file_path }}" target="_blank" class="btn btn-download" style="font-size: 12px; padding: 5px 10px;">
-                                <img src="./img/download.svg" class="icon" alt="" style="width: 14px; height: 14px;">下載
-                            </a>
-                        </td>
-                        <td>
-                            {% if version.status == 'rejected' %}
-                                <span style="color: #dc3545;">已退回</span>
-                            {% elif version.status == 'accepted' %}
-                                <span style="color: #28a745;">已接受</span>
-                            {% else %}
-                                <span style="color: #ffc107;">待審核</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% elif project.delivery_file_path %}
-            <a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
-                <img src="./img/download.svg" class="icon" alt="">下載結案檔案
-            </a>
-        {% endif %}
-        
-        <div class="btnContainer" style="justify-content: flex-start; margin-top: 20px;">
-            <button class="btn btn-danger" onclick='notifyWindow("確定要退件？(專案將退回進行中)", "確認退件", "reject_delivery", {{ project.id }}, true);'>
-                退件
-            </button>
-            <button class="btn btn-success" onclick='notifyWindow("確認接受此結案檔案？(專案將結案)", "接受結案", "accept_delivery", {{ project.id }}, false);'>
-                接受結案
+    <div style="margin-bottom: 30px;">
+        <div class="btnContainer">
+            <button onclick="{% if role == 'client' %}loadContent('/page/my-projects');{% else %}{% if project.status == 'open' %}tempPage = 0; menuLinkClick(5);{% else %}tempPage = 0; menuLinkClick(6);{% endif %}{% endif %}return false;">
+                <img src="./img/back.svg">
+                <span>返回列表</span>
             </button>
         </div>
-    
-    {% elif role == 'client' and project.status == 'completed'%}
-        <p>接案人 ({{ project.accepted_freelancer_username }}) 已交付檔案，並結案：</p>
-        
-        {% if delivery_versions %}
-            <h4>所有版本歷史：</h4>
-            <table id="contentTable" style="margin-bottom: 20px;">
-                <thead>
-                    <tr>
-                        <th style="font-weight: bold; padding: 10px;">版本</th>
-                        <th style="font-weight: bold; padding: 10px;">上傳時間</th>
-                        <th style="font-weight: bold; padding: 10px;">檔案</th>
-                        <th style="font-weight: bold; padding: 10px;">狀態</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for version in delivery_versions %}
-                    <tr>
-                        <td>版本 {{ version.version }}</td>
-                        <td>{{ version.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td>
-                            <a href="/{{ version.file_path }}" target="_blank" class="btn btn-download" style="font-size: 12px; padding: 5px 10px;">
-                                <img src="./img/download.svg" class="icon" alt="" style="width: 14px; height: 14px;">下載
-                            </a>
-                        </td>
-                        <td>
-                            {% if version.status == 'rejected' %}
-                                <span style="color: #dc3545;">已退回</span>
-                            {% elif version.status == 'accepted' %}
-                                <span style="color: #28a745;">已接受</span>
-                            {% else %}
-                                <span style="color: #ffc107;">待審核</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% elif project.delivery_file_path %}
-            <a href="/{{ project.delivery_file_path }}" target="_blank" class="btn btn-download">
-                <img src="./img/download.svg" class="icon" alt="">下載結案檔案
-            </a>
-        {% endif %}
-
-    {% elif role == 'client' and project.status == 'rejected'%}
-        <h3 class="text-danger">您已退件 {{ project.accepted_freelancer_username }} 的檔案，請等候接案人重新交付。</h3>
-    {% endif %}
-
-    <hr>
-    
-    <div>
-        <strong>預算：</strong> ${{ project.budget }}
-    </div>
-    <div>
-        <strong>需求描述：</strong>
-        <p style="white-space: pre-wrap;">{{ project.content }}</p>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1 style="margin: 0;">{{ project.title }}</h1>
+            <span class="status-pill link-{{project.status}}" style="font-size: 14px; padding: 6px 16px;">
+                {{ project.status_text }}
+            </span>
+        </div>
     </div>
 
-    {% if role == 'client' %}
-    <hr>
-    <h3>收到的報價 ({{ bids | length }} 則)</h3>
-    {% if bids %}
-        <table id="contentTable">
-            <thead>
-                <tr>
-                    <th style="font-weight: bold; padding: 10px;">提案者</th>
-                    <th style="font-weight: bold; padding: 10px;">報價</th>
-                    <th style="font-weight: bold; padding: 10px;">留言</th>
-                    <th style="font-weight: bold; padding: 10px;">提案計畫書</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for bid in bids %}
-                <tr>
-                    <td>{{ bid.freelancer_username }}</td>
-                    <td>${{ bid.bid_amount }}</td>
-                    <td>{{ bid.message }}</td>
-                    <td>
-                        {% if bid.proposal_file_path %}
-                            <a href="/{{ bid.proposal_file_path }}" target="_blank" class="btn btn-download" style="font-size: 12px; padding: 5px 10px;">
-                                <img src="./img/download.svg" class="icon" alt="" style="width: 14px; height: 14px;">下載 PDF
-                            </a>
-                        {% else %}
-                            <span style="color: #999;">未提供</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if project.status == 'open' %}
-                            <button class="btn btn-primary" onclick='notifyWindow("確定要接受此報價？ (專案將鎖定並開始)", "接受", "accept_bid", {{ bid.id }}, false);'>
-                                接受此報價
+    {% set step = 1 %}
+    {% if project.status in ['in_progress', 'delivered', 'rejected'] %} {% set step = 2 %} {% endif %}
+    {% if project.status == 'delivered' %} {% set step = 3 %} {% endif %}
+    {% if project.status == 'completed' %} {% set step = 4 %} {% endif %}
+
+    <div class="stepper">
+        <div class="step-item {{ 'step-active' if step == 1 else ('step-completed' if step > 1 else '') }}">
+            <div class="step-circle">{{ '✓' if step > 1 else '1' }}</div>
+            <div class="step-label">專案公開中</div>
+        </div>
+        <div class="step-item {{ 'step-active' if step == 2 else ('step-completed' if step > 2 else '') }}">
+            <div class="step-circle">{{ '✓' if step > 2 else '2' }}</div>
+            <div class="step-label">專案進行中</div>
+        </div>
+        <div class="step-item {{ 'step-active' if step == 3 else ('step-completed' if step > 3 else '') }}">
+            <div class="step-circle">{{ '✓' if step > 3 else '3' }}</div>
+            <div class="step-label">驗收確認中</div>
+        </div>
+        <div class="step-item {{ 'step-active' if step == 4 else ('step-completed' if step > 4 else '') }}">
+            <div class="step-circle">{{ '✓' if step >= 4 else '4' }}</div>
+            <div class="step-label">已結案</div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+
+        <div class="main-column">
+            
+            {% if project.status != 'open' and project.status != 'deleted' %}
+                <div class="detail-card" style="padding: 0; overflow: hidden;">
+                    <div class="issue-box {{ '' if role == 'freelancer' else '' }}">
+                        <div>
+                            <h3 style="margin: 0 0 5px 0; color: #b45309;">
+                                {% if role == 'client' %}
+                                    ⚡ 待解決事項 (Issues)
+                                {% else %}
+                                    <img src="./img/message.svg"> 專案溝通板
+                                {% endif %}
+                            </h3>
+                            <p style="margin: 0; font-size: 14px; color: #78350f;">
+                                {{ '透過 Issue 追蹤修改進度，確保品質符合預期。' if role == 'client' else '委託人可能會在此提出修改建議，請保持關注。' }}
+                            </p>
+                        </div>
+                        <button class="issue-btn" onclick="loadContent('/page/project/{{ project.id }}/issues');">
+                            {{ '管理 Issues' if role == 'client' else '查看 Issues' }}
+                        </button>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if project.status in ['delivered', 'completed', 'rejected'] or (role == 'freelancer' and project.status == 'in_progress') %}
+            <div class="detail-card">
+                <h3 style="margin: 0 0 16px 0; color: #111827;">
+                    <img src="./img/box.svg"> 檔案交付管理
+                </h3>
+
+                {% if project.status == 'in_progress' %}
+                    <p class="text-muted">等待接案人上傳檔案...</p>
+                {% elif project.status == 'rejected' %}
+                    <p class="text-danger font-bold">檔案已被退回，請接案人參考 Issue 修改後重新上傳。</p>
+                {% elif project.status == 'delivered' %}
+                    <p class="text-success font-bold">接案人已交付檔案，請下載並審核。</p>
+                {% endif %}
+
+                {% if role == 'freelancer' and project.status in ['in_progress', 'rejected'] and current_user == project.accepted_freelancer_username %}
+                    <form id="deliver-project-form" style="background: #f9fafb; padding: 20px; border-radius: 8px; border: 2px dashed #d1d5db;">
+                        <input class="form-input" type="hidden" id="project_id_for_delivery" value="{{ project.id }}">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 600;">上傳成果 (.zip, .pdf):</label>
+                            <input class="form-input" type="file" id="delivery_file" name="delivery_file" required>
+                        </div>
+                        <button type="button" class="btn btn-primary" id="submitDeliveryBtn" onclick='notifyWindow("確認上傳檔案？", "上傳", "upload", {{project.id}}, false);'>
+                            上傳結案檔案
+                        </button>
+                    </form>
+                {% endif %}
+
+                {% if delivery_versions %}
+                    <h4 style="margin-top: 20px; font-size: 14px; color: #6b7280; text-transform: uppercase;">版本紀錄</h4>
+                    <div style="border: 1px solid #e5e7eb; border-radius: 8px;">
+                        {% for version in delivery_versions %}
+                        <div class="file-list-item">
+                            <div>
+                                <div style="font-weight: 600;">版本 {{ version.version }}</div>
+                                <div style="font-size: 12px; color: #9ca3af;">{{ version.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                            </div>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                {% if version.status == 'rejected' %}
+                                    <span class="status-pill" style="font-size: 12px; color: #ef4444; background: #fee2e2;">已退回</span>
+                                {% elif version.status == 'accepted' %}
+                                    <span class="status-pill" style="font-size: 12px; color: #10b981; background: #d1fae5;">已接受</span>
+                                {% else %}
+                                    <span class="status-pill" style="font-size: 12px; color: #f59e0b; background: #fef3c7;">待審核</span>
+                                {% endif %}
+                                
+                                <a href="/{{ version.file_path }}" target="_blank" class="btn btn-secondary" style="padding: 4px 20px; font-size: 12px; text-decoration: none;">
+                                    <img src="./img/download.svg"> 下載
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {% if role == 'client' and project.status == 'delivered' %}
+                        <div style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button class="btn btn-danger" style="flex: 1;" onclick='notifyWindow("確定要退件？(請確保已建立Issue說明原因)", "退回修改", "reject_delivery", {{ project.id }}, true);'>
+                                退回修改
                             </button>
-                        {% elif bid.status == 'accepted' %}
-                            <span class="status-pill link-open">已接受</span>
-                        {% elif bid.status == 'rejected' %}
-                            <span class="status-pill link-rejected">已拒絕</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>目前尚無報價。</p>
-    {% endif %}
-
-    {% elif role == 'freelancer' and project.status == 'open' %}
-        <hr>
-        {% if is_deadline_passed %}
-            <h3 class="text-danger">⚠️ 此專案已過截止日期，無法再提交報價</h3>
-            <p style="color: #666;">截止時間：{{ project.deadline_date.strftime('%Y-%m-%d %H:%M') if project.deadline_date else 'N/A' }}</p>
-        {% elif is_bid_exist == False %}
-            <h3>有意願承包嗎？請提出承包意願 (報價)</h3>
-            <form id="create-bid-form" enctype="multipart/form-data">
-                <input type="hidden" name="project_id" value="{{ project.id }}">
-                <div class="form-group">
-                    <label for="bid_amount">您的報價 (TWD):</label>
-                    <input type="number" id="bid_amount" name="bid_amount" required>
-                </div>
-                <div class="form-group">
-                    <label for="message">留言 (告訴委託人您為什麼適合，選填):</label>
-                    <textarea id="message" name="message" rows="4"></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="proposal_file">提案計畫書 (PDF，必填):</label>
-                    <input type="file" id="proposal_file" name="proposal_file" accept=".pdf" required>
-                    <small style="color: #666;">僅接受 PDF 格式</small>
-                </div>
-                <button type="button" class="btn btn-primary" id="submitBidBtn" onclick='notifyWindow("是否確認送出這則報價？", "送出", "sendBid", 0, false);'>送出報價</button>
-            </form>
-        {%elif is_bid_exist == True and bid_status == 'pending'%}
-            <h3 class="text-warning">您已提過報價，請耐心等待委託人接受。</h3>
-        {%elif is_bid_exist == True and bid_status == 'rejected'%}
-            <h3 class="text-danger">很抱歉，委託人已拒絕你的報價，再接再厲。</h3>
-        {%endif%}
-    
-    {% elif role == 'freelancer' and project.status in ['in_progress', 'rejected'] and current_user == project.accepted_freelancer_username %}
-        <hr>
-        {% if project.status == 'rejected' %}
-            <h3 class="text-danger">委託人已退件，請重新上傳檔案</h3>
-            <p>請重新上傳您的專案成果，委託人將會進行審核。</p>
-        {% else %}
-            <h3>上傳結案檔案</h3>
-            <p>請上傳您的專案成果，委託人將會進行審核。</p>
-        {% endif %}
-        
-        <form id="deliver-project-form">
-            <input type="hidden" id="project_id_for_delivery" value="{{ project.id }}">
-            <div class="form-group">
-                <label for="delivery_file">選擇檔案 (.zip, .pdf, .jpg...):</label>
-                <input type="file" id="delivery_file" name="delivery_file" required>
+                            <button class="btn btn-success" style="flex: 1;" onclick='notifyWindow("確認接受此結案？(專案將完成)", "接受結案", "accept_delivery", {{ project.id }}, false);'>
+                                驗收通過 (結案)
+                            </button>
+                        </div>
+                    {% endif %}
+                {% endif %}
             </div>
-            <button type="button" class="btn btn-primary" id="submitDeliveryBtn" onclick='notifyWindow("是否上傳檔案", "上傳", "upload", {{project.id}}, false);'>上傳結案</button>
-        </form>
-    
-    {% elif role == 'freelancer' and project.status == 'delivered' %}
-        <h3 style="color: #0077b6;">您已上傳結案檔案，請等待委託人審核。</h3>
-        
-    {% elif role == 'freelancer' and project.status == 'completed' %}
-        <h3 style="color: #4CAF50;">🎉 恭喜！專案已結案。</h3>
-    {% endif %}
+            {% endif %}
 
-    <div class="btnContainer" style="justify-content: flex-start; margin-top: 2rem;">
-        {% if role == 'client' and project.status != 'completed'%}
-            <button class="btn btn-secondary" onclick="loadContent('/page/my-projects'); return false;">
-                返回列表
-            </button>
-            <button class="btn btn-primary" onclick="loadContent('/page/my-projects/edit-form/{{ project.id }}'); return false;">
-                編輯專案
-            </button>
-        {% elif role == 'client' and project.status == 'completed' %}
-            <button class="btn btn-secondary" onclick="loadContent('/page/my-projects'); return false;">
-                返回列表
-            </button>
-        {% elif role == 'freelancer' and project.status == 'open' %}
-            <button class="btn btn-secondary" onclick="loadContent('/page/browse-projects'); return false;">
-                返回列表
-            </button>
-        {% else %}
-            <button class="btn btn-secondary" onclick="tempPage = 0; menuLinkClick(6);">
-                返回列表
-            </button>
-        {% endif %}
-    </div>
-</section>
+            <div class="detail-card">
+                <h3 style="margin: 0 0 16px 0; color: #111827;">
+                    <img src="./img/document.svg"> 專案需求說明
+                </h3>
+                <div style="white-space: pre-wrap; line-height: 1.6; color: #374151;">{{ project.content }}</div>
+            </div>
+
+            {% if role == 'client' %}
+                <div class="detail-card">
+                    <h3 style="margin: 0 0 16px 0; color: #111827;">
+                        <img src="./img/bid.svg"> 收到的報價 <span style="font-size: 14px; font-weight: normal; color: #6b7280; margin-left: auto;">共 {{ bids | length }} 則</span>
+                    </h3>
+                    {% if bids %}
+                        {% for bid in bids %}
+                        <div class="bid-card">
+                            <div class="bid-header">
+                                <div>
+                                    <span style="font-weight: bold; font-size: 16px;">{{ bid.freelancer_username }}</span>
+                                    <span style="color: gold; margin-left: 5px;">★ {{ bid.avg_score }}</span>
+                                </div>
+                                <div style="font-weight: bold; color: #4f46e5; font-family: monospace; font-size: 16px;">
+                                    ${{ bid.bid_amount }}
+                                </div>
+                            </div>
+                            <p style="color: #4b5563; font-size: 14px; margin: 8px 0;">{{ bid.message }}</p>
+                            
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                                {% if bid.proposal_file_path %}
+                                    <a class="btn" href="/{{ bid.proposal_file_path }}" target="_blank" style="color: #2563eb; font-size: 13px; text-decoration: none;"><img src="./img/download.svg"> 下載提案 PDF</a>
+                                {% else %}
+                                    <span class="text-muted" style="font-size: 13px;">無提案檔案</span>
+                                {% endif %}
+
+                                {% if project.status == 'open' %}
+                                    <button class="btn btn-primary" style="font-size: 13px;" onclick='notifyWindow("接受 {{bid.freelancer_username}} 的報價？", "確認合作", "accept_bid", {{ bid.id }}, false);'>
+                                        選擇此方案
+                                    </button>
+                                {% elif bid.status == 'accepted' %}
+                                    <span class="status-pill link-open">已接受</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted" style="text-align: center; padding: 20px;">目前還沒有人報價，請耐心等候。</p>
+                    {% endif %}
+                </div>
+            
+            {% elif role == 'freelancer' and project.status == 'open' %}
+                <div class="detail-card">
+                    <h3 style="margin: 0 0 16px 0; color: #111827;">
+                        🙋‍♂️ 我要接案
+                    </h3>
+
+                    {% if is_deadline_passed %}
+                        <div style="text-align: center; padding: 20px; color: #ef4444; background: #fee2e2; border-radius: 8px;">
+                            ⏰ 報名時間已截止
+                        </div>
+                    {% elif is_bid_exist == False %}
+                        <form id="create-bid-form" enctype="multipart/form-data">
+                            <input class="form-input" type="hidden" name="project_id" value="{{ project.id }}">
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px;">您的報價 (TWD)</label>
+                                    <input class="form-input" type="number" name="bid_amount" required>
+                                </div>
+                                <div>
+                                    <label style="display: block; margin-bottom: 5px;">提案計畫書 (PDF)</label>
+                                    <input class="form-input" type="file" name="proposal_file" accept=".pdf" required style="font-size: 13px;">
+                                </div>
+                            </div>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; margin-bottom: 5px;">自我推薦 (Message)</label>
+                                <textarea name="message" rows="3" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;"></textarea>
+                            </div>
+
+                            <button type="button" class="btn btn-primary btn-block" onclick='notifyWindow("確認送出報價？", "送出", "sendBid", 0, false);'>
+                                送出報價單
+                            </button>
+                        </form>
+                    {% else %}
+                        <div style="text-align: center; padding: 20px; background: #eff6ff; border-radius: 8px; color: #1e40af;">
+                            已送出報價，請等候委託人回應。
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+             {% if project.status == 'completed' %}
+            <div class="detail-card">
+                <h3 style="margin: 0 0 16px 0; color: #111827;">
+                    <img src="./img/star.svg"> 合作評價
+                </h3>
+
+                {% if not has_reviewed %}
+                    <div style="background: #f9fafb; padding: 20px; border-radius: 8px;">
+                        <p style="margin-bottom: 15px;">請為這次合作評分：</p>
+                        <form id="create-review-form">
+                            <div style="display: flex;gap: 20px;flex-wrap: wrap;justify-content: space-evenly;">
+                            {% if role == 'client' %}
+                                <div class="form-group">
+                                    <label>1. 產出品質 (1-5):</label>
+                                    <div class="radio">
+                                        <input id="score_1_5" type="radio" name="score_1" value="5" />
+                                        <label for="score_1_5" title="5分">
+                                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                                                <path
+                                                d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                                                ></path>
+                                            </svg>
+                                        </label>
+
+                                        <input id="score_1_4" type="radio" name="score_1" value="4" />
+                                        <label for="score_1_4" title="4分">
+                                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                                                <path
+                                                d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                                                ></path>
+                                            </svg>
+                                        </label>
+
+                                        <input id="score_1_3" type="radio" name="score_1" value="3" />
+                                        <label for="score_1_3" title="3分">
+                                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                                                <path
+                                                d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                                                ></path>
+                                            </svg>
+                                        </label>
+
+                                        <input id="score_1_2" type="radio" name="score_1" value="2" />
+                                        <label for="score_1_2" title="2分">
+                                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                                                <path
+                                                d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                                                ></path>
+                                            </svg>
+                                        </label>
+
+                                        <input id="score_1_1" type="radio" name="score_1" value="1" />
+                                        <label for="score_1_1" title="1分">
+                                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                                                <path
+                                                d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                                                ></path>
+                                            </svg>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>2. 執行效率 (1-5):</label>
+                                    <div class="radio">
+                                        <input id="score_2_5" type="radio" name="score_2" value="5" />
+                                        <label for="score_2_5" title="5分">
+                                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                                                <path
+                                                d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                                                ></path>
+                                            </svg>
+                                        </label>
+
+                                        <input id="score_2_4" type="radio" name="score_2" value="4" />
+                                        <label for="score_2_4" title="4分">
+                                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                                                <path
+                                                d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                                                ></path>
+                                            </svg>
+                                        </label>
+
+                                        <input id="score_2_3" type="radio" name="score_2" value="3" />
+                                        <label for="score_2_3" title="3分">
+                                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                                                <path
+                                                d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                                                ></path>
+                                            </svg>
+                                        </label>
+
+                                        <input id="score_2_2" type="radio" name="score_2" value="2" />
+                                        <label for="score_2_2" title="2分">
+                                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                                                <path
+                                                d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                                                ></path>
+                                            </svg>
+                                        </label>
+
+                                        <input id="score_2_1" type="radio" name="score_2" value="1" />
+                                        <label for="score_2_1" title="1分">
+                                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                                                <path
+                                                d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                                                ></path>
+                                            </svg>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                            <label>3. 合作態度 (1-5):</label>
+                            <div class="radio">
+                            <input id="score_3_5" type="radio" name="score_3" value="5" />
+                            <label for="score_3_5" title="5分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_3_4" type="radio" name="score_3" value="4" />
+                            <label for="score_3_4" title="4分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_3_3" type="radio" name="score_3" value="3" />
+                            <label for="score_3_3" title="3分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_3_2" type="radio" name="score_3" value="2" />
+                            <label for="score_3_2" title="2分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_3_1" type="radio" name="score_3" value="1" />
+                            <label for="score_3_1" title="1分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+                            </div>
+                            </div>
+                            {% else %}
+                            <div class="form-group">
+                            <label>1. 需求合理性 (1-5):</label>
+                            <div class="radio">
+                            <input id="score_1_5" type="radio" name="score_1" value="5" />
+                            <label for="score_1_5" title="5分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_1_4" type="radio" name="score_1" value="4" />
+                            <label for="score_1_4" title="4分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_1_3" type="radio" name="score_1" value="3" />
+                            <label for="score_1_3" title="3分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_1_2" type="radio" name="score_1" value="2" />
+                            <label for="score_1_2" title="2分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_1_1" type="radio" name="score_1" value="1" />
+                            <label for="score_1_1" title="1分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+                            </div>
+                            </div>
+                            <div class="form-group">
+                            <label>2. 驗收難度 (1-5):</label>
+                            <div class="radio">
+                            <input id="score_2_5" type="radio" name="score_2" value="5" />
+                            <label for="score_2_5" title="5分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_2_4" type="radio" name="score_2" value="4" />
+                            <label for="score_2_4" title="4分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_2_3" type="radio" name="score_2" value="3" />
+                            <label for="score_2_3" title="3分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_2_2" type="radio" name="score_2" value="2" />
+                            <label for="score_2_2" title="2分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_2_1" type="radio" name="score_2" value="1" />
+                            <label for="score_2_1" title="1分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+                            </div>
+                            </div>
+                            <div class="form-group">
+                            <label>3. 合作態度 (1-5):</label>
+                            <div class="radio">
+                            <input id="score_3_5" type="radio" name="score_3" value="5" />
+                            <label for="score_3_5" title="5分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_3_4" type="radio" name="score_3" value="4" />
+                            <label for="score_3_4" title="4分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_3_3" type="radio" name="score_3" value="3" />
+                            <label for="score_3_3" title="3分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_3_2" type="radio" name="score_3" value="2" />
+                            <label for="score_3_2" title="2分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+
+                            <input id="score_3_1" type="radio" name="score_3" value="1" />
+                            <label for="score_3_1" title="1分">
+                            <svg viewBox="0 0 576 512" height="1em" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                            d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z"
+                            ></path>
+                            </svg>
+                            </label>
+                            </div>
+                            </div>
+                            {% endif %}
+                            </div>
+                             <div class="form-group">
+                                <label>質性評論:</label>
+                                <textarea name="comment" rows="3" required style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;"></textarea>
+                            </div>
+                            <button type="button" class="btn btn-primary" onclick='notifyWindow("送出評價？", "送出", "create_review", {{project.id}}, false);'>送出評價</button>
+                        </form>
+                    </div>
+                {% endif %}
+
+                {% if reviews_data %}
+                    <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+                        {% for review in reviews_data %}
+                        <div style="border-bottom: 1px solid #eee; padding-bottom: 15px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <strong>{{ review.reviewer_name }}</strong>
+                                <span style="color: gold;">★ {{ ((review.score_1 + review.score_2 + review.score_3) / 3) | round(1) }}</span>
+                            </div>
+                            <p style="margin: 5px 0; color: #4b5563;">{{ review.comment }}</p>
+                            <span style="font-size: 12px; color: #9ca3af;">{{ review.created_at.strftime('%Y-%m-%d %H:%M') if review.created_at else 'N/A' }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+        </div> <div class="sidebar-column">
+            
+            <div class="detail-card">
+                <div style="font-size: 14px; color: #6b7280; text-align: center; margin-bottom: 5px;">專案預算</div>
+                <div class="budget-display">
+                    <div class="budget-amount">${{ project.budget }}</div>
+                </div>
+                
+                <hr style="border: 0; border-top: 1px solid #f3f4f6; margin: 15px 0;">
+                
+                <div class="info-row">
+                    <span class="info-label">專案 ID</span>
+                    <span class="info-value">#{{ project.id }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">發布日期</span>
+                    <span class="info-value">{{ project.create_time.strftime('%Y-%m-%d') }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">截止時間</span>
+                    <span class="info-value {{ 'text-danger' if is_deadline_approaching else '' }}">
+                        {{ project.deadline_date.strftime('%Y-%m-%d %H:%M') if project.deadline_date else 'N/A' }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="detail-card">
+                <h3 style="margin: 0 0 16px 0; color: #111827;">
+                    <img src="./img/user.svg"> 專案人員
+                </h3>
+
+                <div style="margin-bottom: 15px;">
+                    <div style="font-size: 12px; color: #6b7280;">委託人 (Client)</div>
+                    <div style="font-weight: bold; font-size: 16px;">{{ project.client_username }}</div>
+                    <div style="font-size: 12px; color: gold;">★ {{ project.client_avg_score }}</div>
+                </div>
+
+                {% if project.accepted_freelancer_username %}
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f3f4f6;">
+                    <div style="font-size: 12px; color: #6b7280;">承接人 (Freelancer)</div>
+                    <div style="font-weight: bold; font-size: 16px; color: #4f46e5;">{{ project.accepted_freelancer_username }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if role == 'client' and project.status != 'completed' %}
+                <button style="width: 320px;" class="btn btn-secondary btn-block" onclick="loadContent('/page/my-projects/edit-form/{{ project.id }}'); return false;">
+                    <img src="./img/write.svg"> 編輯專案內容
+                </button>
+            {% endif %}
+
+        </div> </div> </section>
 
 <div id="loading">
     <div class="jelly-triangle">
@@ -270,5 +624,5 @@
             </filter>
         </defs>
     </svg>
-    <div class="loading-text" id="loadingText">請稍後...</div>
+    <div class="loading-text" id="loadingText">處理中...</div>
 </div>

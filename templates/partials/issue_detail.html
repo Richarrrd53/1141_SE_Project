@@ -1,90 +1,94 @@
 <section class="content-area" id="contentArea">
-    <div style="margin-bottom: 20px;">
-        <button onclick="loadContent('/page/project/{{ project.id }}/issues');" style="background: #eef2ff; color: #2F4189;">
-            ← 返回 Issues 列表
-        </button>
+    
+    <div style="margin-bottom: 30px;">
+        <div class="btnContainer">
+            <button onclick="loadContent('/page/project/{{ project.id }}/issues');">
+                <img src="./img/back.svg">
+                <span>返回列表</span>
+            </button>
+        </div>
     </div>
 
-    <div style="background: {% if issue.status == 'open' %}#fff8dd{% else %}#cbffcc{% endif %}; padding: 30px; border-radius: 20px; margin-bottom: 30px;">
-        <div style="display: flex; justify-content: space-between; align-items: start;">
-            <div style="flex: 1;">
-                <h1 style="margin: 0 0 15px 0;">
-                    {{ issue.title }}
-                </h1>
-                <div style="font-size: 16px; color: #666; margin-bottom: 20px;">
-                    <span>建立者: <strong>{{ issue.creator_username }}</strong></span> | 
-                    <span>建立時間: {{ issue.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                    {% if issue.resolved_at %}
-                    | <span>解決時間: {{ issue.resolved_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                    {% endif %}
-                </div>
-                <p style="white-space: pre-wrap; line-height: 1.6;">{{ issue.description }}</p>
-            </div>
-            <div style="font-size: 48px; margin-left: 20px;">
-                {% if issue.status == 'open' %}⚠️{% else %}✅{% endif %}
-            </div>
-        </div>
-
-        {% if role == 'client' %}
-        <div style="margin-top: 20px; display: flex; gap: 10px;">
+    <div class="issue-main-card {% if issue.status == 'open' %}status-open{% else %}status-resolved{% endif %}" id="project-{{ project.id }}-issue-{{ issue.id }}">
+        
+        <div class="issue-header-row">
+            <h1 style="margin: 0; font-size: 26px; color: #111827;">{{ issue.title }}</h1>
+            
             {% if issue.status == 'open' %}
-            <button onclick='resolveIssue({{ issue.id }});' style="background: #4CAF50;">
-                ✓ 標記為已解決
-            </button>
+                <span style="background: #fffbeb; color: #b45309; padding: 6px 12px; border-radius: 8px; font-weight: bold; border: 1px solid #fcd34d;">
+                    <img src="./img/correct.svg" style="width: 16px; height: 16px; margin-right: 4px;"> 未解決
+                </span>
             {% else %}
-            <button onclick='reopenIssue({{ issue.id }});' style="background: #f7d344; color: #2e2e2e;">
-                ↻ 重新開啟
-            </button>
+                <span style="background: #ecfdf5; color: #0eb83a; padding: 6px 12px; border-radius: 8px; font-weight: bold; border: 1px solid #6ee7b7;">
+                    <img src="./img/correct.svg" style="width: 16px; height: 16px; margin-right: 4px;"> 已解決
+                </span>
             {% endif %}
         </div>
+
+        <div class="issue-meta-info">
+            <span><img src="./img/user.svg"> 建立者: <strong>{{ issue.creator_username }}</strong></span>
+            <span><img src="./img/time.svg"> {{ issue.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            {% if issue.resolved_at %}
+                <span style="color: #0eb83a;"><img src="./img/correct.svg"> 解決於: {{ issue.resolved_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            {% endif %}
+        </div>
+
+        <div style="font-size: 16px; line-height: 1.7; color: #374151; white-space: pre-wrap;">{{ issue.description }}</div>
+
+        {% if role == 'client' %}
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px dashed #e5e7eb; display: flex; justify-content: flex-end;">
+                {% if issue.status == 'open' %}
+                    <button class="btn btn-resolve" onclick='resolveIssue({{ issue.id }});'>
+                        <span>✓</span> 標記為已解決
+                    </button>
+                {% else %}
+                    {% if project.status != 'completed' and project.status != 'deleted'%}
+                        <button class="btn-reopen" onclick='reopenIssue({{ issue.id }});'>
+                            <span>↻</span> 重新開啟 Issue
+                        </button>
+                    {% endif %}
+                {% endif %}
+            </div>
         {% endif %}
     </div>
 
-    <hr>
-
-    <h2 style="margin-bottom: 20px;">討論區 ({{ comments|length }} 則留言)</h2>
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+        <h3 style="margin: 0; color: #4b5563;"><img src="./img/comment.svg"> 討論紀錄</h3>
+        <span style="background: #e5e7eb; color: #6b7280; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: bold;">
+            {{ comments|length }}
+        </span>
+    </div>
 
     {% if comments %}
-    <div style="display: grid; gap: 15px; margin-bottom: 30px;">
-        {% for comment in comments %}
-        <div style="
-            background: {% if comment.role == 'client' %}#eef2ff{% else %}#fff8dd{% endif %};
-            padding: 20px;
-            border-radius: 15px;
-            border-left: 4px solid {% if comment.role == 'client' %}#2F4189{% else %}#f7d344{% endif %};
-        ">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <div>
-                    <strong style="font-size: 16px;">{{ comment.username }}</strong>
-                    <span class="role-{{ comment.role }}" style="margin-left: 10px;">
-                        {% if comment.role == 'client' %}委託人{% else %}接案人{% endif %}
-                    </span>
+        <div class="comments-container">
+            {% for comment in comments %}
+                <div class="comment-card role-{{ comment.role }}">
+                    <div class="comment-header">
+                        <span class="comment-author">{{ comment.username }}</span>
+                        <span>{{ comment.created_at.strftime('%m/%d %H:%M') }}</span>
+                    </div>
+                    <p class="comment-text">{{ comment.comment }}</p>
                 </div>
-                <span style="color: #888; font-size: 14px;">
-                    {{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}
-                </span>
-            </div>
-            <p style="white-space: pre-wrap; margin: 0; line-height: 1.6;">{{ comment.comment }}</p>
+            {% endfor %}
         </div>
-        {% endfor %}
-    </div>
     {% else %}
-    <div style="text-align: center; padding: 40px; color: #888; margin-bottom: 30px;">
-        <p>目前還沒有留言,開始討論吧!</p>
-    </div>
+        <div style="text-align: center; padding: 40px; color: #9ca3af; background: #f9fafb; border-radius: 16px; border: 1px dashed #e5e7eb; margin-bottom: 30px;">
+            <p>目前還沒有人留言，開始討論吧！</p>
+        </div>
     {% endif %}
 
-    <div style="background: #f8f8f8; padding: 25px; border-radius: 15px;">
-        <h3 style="margin-top: 0;">新增留言</h3>
-        <form id="add-comment-form">
-            <div style="margin-bottom: 15px;">
-                <textarea id="comment-text" name="comment" rows="4" required 
-                          placeholder="輸入您的留言..." 
-                          style="width: 100%; font-size: 16px;"></textarea>
+    <div class="form-card" style="margin-top: 30px;">
+        <h3 style="margin: 0 0 15px 0; font-size: 16px; color: #1f2937;"><img src="./img/write.svg"> 新增留言</h3>
+        <form class="comment-form" id="add-comment-form-{{ project.id }}">
+            <div class="editor-container" style="margin-bottom: 15px;">
+                <textarea id="comment-text" name="comment" class="editor-textarea" rows="4" required 
+                          placeholder="請輸入您的回覆..." style="min-height: 120px;"></textarea>
             </div>
-            <button type="button" onclick='submitComment({{ issue.id }});'>
-                發送留言
-            </button>
+            <div style="text-align: right;">
+                <button type="button" class="btn btn-submit" style="width: auto; padding: 10px 25px;" onclick='submitComment({{ issue.id }});'>
+                    發送留言
+                </button>
+            </div>
         </form>
     </div>
 
@@ -106,4 +110,3 @@
     </svg>
     <div class="loading-text" id="loadingText">請稍後...</div>
 </div>
-

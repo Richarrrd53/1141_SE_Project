@@ -2,7 +2,7 @@ function $(str){
     return document.getElementById(str);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+window.onload = () => {
     document.body.style.height = window.innerHeight + "px";
     nextPage($("verificationContainer"),$("loginFormSection"),1400,800);
     setTimeout(() => {
@@ -99,7 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }, 1000);
         }
     });
-});
+};
 
 
 function shake(item){

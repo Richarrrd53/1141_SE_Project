@@ -15,11 +15,12 @@ import model.bids as bids
 import model.notifications as notifications
 import model.issues as issues
 import model.reviews as reviews
+import model.deliveries as deliveries
 
 import security
 
-from datetime import date
-from datetime import timedelta
+from datetime import date, time, timedelta, datetime
+from zoneinfo import ZoneInfo
 from psycopg.rows import dict_row
 
 import os
@@ -130,11 +131,30 @@ async def get_my_projects_page(req: Request, conn = Depends(getDB), user:str=Dep
 
     role_text = translate_role(myRole)
 
+    # 定義台灣時區
+    tw_tz = ZoneInfo("Asia/Taipei")
+
     for item in myList:
-        if item.get('create_time') and item.get('deadline') is not None:
-            item['deadline_date'] = item['create_time'] + timedelta(days=item['deadline'])
+        d_dt = item.get('deadline_datetime')
+        
+        # 如果資料庫沒存絕對時間，才勉強用 create_time + deadline 分鐘數
+        if d_dt is None and item.get('create_time') and item.get('deadline') is not None:
+             d_dt = item['create_time'] + timedelta(minutes=item['deadline'])
+
+        if d_dt:
+            # 如果資料庫拿出來的是 Naive (沒有時區資訊，通常是 UTC)，先視為 UTC
+            if d_dt.tzinfo is None:
+                d_dt = d_dt.replace(tzinfo=ZoneInfo("UTC"))
+            
+            # 強制轉成台灣時間
+            item['deadline_date'] = d_dt.astimezone(tw_tz)
         else:
             item['deadline_date'] = None
+            
+        is_deadline_passed = False
+        if item.get("deadline_date"):
+            is_deadline_passed = datetime.now(tw_tz) > item["deadline_date"]
+            item["is_deadline_passed"] = is_deadline_passed
 
         item['status_text'] = translate_status(item.get('status', ''))
     
@@ -144,7 +164,7 @@ async def get_my_projects_page(req: Request, conn = Depends(getDB), user:str=Dep
         "items": myList,
         "role_text": role_text,
         "role": myRole,
-        "username": user
+        "username": user,
     })
 
 @app.get("/page/create-project", response_class=HTMLResponse)
@@ -165,15 +185,36 @@ async def create_project(req: Request, conn = Depends(getDB), user_name: str = D
     if user_name is None:
         return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
     try:
-        today = date.today()
+        tw_tz = ZoneInfo("Asia/Taipei")
+        now = datetime.now(tw_tz)
 
         user = await users.get_user_by_username(conn, user_name)
         if not user:
             raise HTTPException(status_code=404, detail="找不到使用者")
         
         user_id = user['id']
+        
+        # 將前端傳來的 datetime-local 字串轉換為 datetime 物件
+        deadline_dt = datetime.fromisoformat(deadline)
+        
+        # 如果前端傳來的時間沒有時區資訊 (Naive)，我們強制賦予它台灣時區
+        if deadline_dt.tzinfo is None:
+            deadline_dt = deadline_dt.replace(tzinfo=tw_tz)
+        else:
+            # 如果有帶時區，將其轉換為台灣時區以防萬一
+            deadline_dt = deadline_dt.astimezone(tw_tz)
+        
+        # 計算從現在到截止時間的分鐘數
+        time_diff = deadline_dt - now
+        deadline_minutes = int(time_diff.total_seconds() / 60)
+        
+        
+        
+        # 確保截止時間在未來
+        if deadline_minutes <= 0:
+            return JSONResponse(status_code=400, content={"success": False, "message": "截止時間必須在未來"})
 
-        await posts.createPost(conn, title, content, budget, today, deadline, user_id)
+        await posts.createPost(conn, title, content, budget, now, deadline_minutes, user_id, deadline_dt)
 
         return JSONResponse(status_code=200, content={"success": True, "message": "專案建立成功"})
         
@@ -192,13 +233,34 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
         return HTMLResponse("<h1>404 - 找不到專案</h1>", status_code=404)
     
 
-    
-    if project_detail.get("create_time") and project_detail.get("deadline") is not None:
-        project_detail["deadline_date"] = project_detail["create_time"] + timedelta(days=project_detail["deadline"])
+
+    # 定義台灣時區
+    tw_tz = ZoneInfo("Asia/Taipei")
+    d_dt = project_detail.get('deadline_datetime')
+    if d_dt is None and project_detail.get("create_time") and project_detail.get("deadline") is not None:
+        c_time = project_detail["create_time"]
+        if not hasattr(c_time, 'hour'):  
+            c_time = datetime.combine(c_time, time.min)
+        d_dt = c_time + timedelta(minutes=project_detail["deadline"])
+        
+    if d_dt:
+        if d_dt.tzinfo is None:
+             # 假設 DB 存的是 UTC
+            d_dt = d_dt.replace(tzinfo=ZoneInfo("UTC"))
+        # 轉成台灣時間
+        project_detail["deadline_date"] = d_dt.astimezone(tw_tz)
     else:
         project_detail["deadline_date"] = None
-
+        
     project_detail["status_text"] = translate_status(project_detail.get("status", ""))
+    
+    # 檢查是否已過截止時間
+    is_deadline_passed = False
+    if project_detail.get("deadline_date"):
+        is_deadline_passed = datetime.now(tw_tz) > project_detail["deadline_date"]
+        
+    # 取得所有交付版本
+    delivery_versions = await deliveries.get_all_delivery_versions(conn, id)
     role = get_current_role(req)
     
     current_user_db = await users.get_user_by_username(conn, user) if user else None
@@ -215,6 +277,11 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
     project_reviews = []
     if project_detail["status"] == "completed":
         project_reviews = await reviews.get_reviews_by_project(conn, id)
+        
+    for review in project_reviews:
+        if review['created_at'].tzinfo is None:
+            review['created_at'] = review['created_at'].replace(tzinfo=ZoneInfo("UTC"))
+        review['created_at'] = review['created_at'].astimezone(ZoneInfo("Asia/Taipei"))
     
     if role == 'freelancer':
         freelancer_id = await users.get_user_by_username(conn, user)
@@ -232,6 +299,8 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
             "current_user": user,
             "is_bid_exist": is_bid_exist, 
             "bid_status": bid_status,
+            "delivery_versions": delivery_versions,
+            "is_deadline_passed": is_deadline_passed,
             "has_reviewed": has_reviewed,
             "reviews_data": project_reviews
         })
@@ -243,6 +312,8 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
             "role": role, 
             "bids": bids_list,
             "current_user": user,
+            "delivery_versions": delivery_versions,
+            "is_deadline_passed": is_deadline_passed,
             "has_reviewed": has_reviewed,
             "reviews_data": project_reviews
             })
@@ -339,33 +410,58 @@ async def get_browse_projects_page(req: Request, conn = Depends(getDB), user:str
     
     project_list = await posts.get_open_projects(conn)
     
-    
-    for item in project_list:
-        try:
-            if item.get('create_time') and item.get('deadline') is not None:
-                
-                deadline_days = item['deadline']
-                if 0 <= deadline_days <= 3650:  
-                    item['deadline_date'] = item['create_time'] + timedelta(days=deadline_days)
-                else:
-                    
-                    item['deadline_date'] = None
-                    print(f"警告: 專案 {item.get('id')} 的 deadline 值異常: {deadline_days}")
-            else:
-                item['deadline_date'] = None
-        except (OverflowError, TypeError, ValueError) as e:
+
             
-            print(f"日期計算錯誤 (專案 {item.get('id')}): {e}")
+    # 定義台灣時區
+    tw_tz = ZoneInfo("Asia/Taipei")
+    is_deadline_approaching = False
+    for item in project_list:
+        d_dt = item.get('deadline_datetime')
+        
+        # 如果資料庫沒存絕對時間，才勉強用 create_time + deadline 分鐘數
+        if d_dt is None and item.get('create_time') and item.get('deadline') is not None:
+             d_dt = item['create_time'] + timedelta(minutes=item['deadline'])
+
+        if d_dt:
+            # 如果資料庫拿出來的是 Naive (沒有時區資訊，通常是 UTC)，先視為 UTC
+            if d_dt.tzinfo is None:
+                d_dt = d_dt.replace(tzinfo=ZoneInfo("UTC"))
+            
+            # 強制轉成台灣時間
+            item['deadline_date'] = d_dt.astimezone(tw_tz)
+        else:
             item['deadline_date'] = None
+            
+        deadline = item["deadline_date"]
+        if deadline.tzinfo is None:
+            deadline = deadline.replace(tzinfo=tw_tz)
+        now = datetime.now(tw_tz)
+        remaining_time = deadline - now
+        
+        if timedelta(0) < remaining_time <= timedelta(days=3):
+            is_deadline_approaching = True
+            
+        item["is_deadline_approaching"] = is_deadline_approaching
+
+        item['status_text'] = translate_status(item.get('status', ''))
 
     return templates.TemplateResponse("partials/browse_projects.html", {
         "request": req,
         "items": project_list,
-        "role": myRole
+        "role": myRole,
+        "is_deadline_approaching": is_deadline_approaching
     })
     
 @app.post("/api/project/bid", dependencies=[Depends(checkRole("freelancer"))])
-async def submit_bid(req: Request, conn = Depends(getDB), user_name: str = Depends(get_current_user), project_id = Form(...), bid_amount = Form(...), message: str = Form("")):
+async def submit_bid(
+    req: Request, 
+    conn = Depends(getDB), 
+    user_name: str = Depends(get_current_user), 
+    project_id = Form(...), 
+    bid_amount = Form(...), 
+    message: str = Form(""),
+    proposal_file: UploadFile = File(...)
+):
     if user_name is None:
         return JSONResponse(status_code=401, content={"success": False, "message": "請先登入"})
     
@@ -375,8 +471,50 @@ async def submit_bid(req: Request, conn = Depends(getDB), user_name: str = Depen
     
     freelancer_id = freelancer['id']
     
+    filename_str = proposal_file.filename or ""
+    
+    if not filename_str.lower().endswith('.pdf'):
+        return JSONResponse(status_code=400, content={"success": False, "message": "提案計畫書必須為 PDF 格式"})
+    
     try:
-        await bids.create_bid(conn, project_id, freelancer_id, bid_amount, message)
+        # 檢查專案狀態和截止日期
+        project_detail = await posts.getPost(conn, project_id)
+        if not project_detail:
+            return JSONResponse(status_code=404, content={"success": False, "message": "找不到專案"})
+        
+        if project_detail['status'] != 'open':
+            return JSONResponse(status_code=400, content={"success": False, "message": "此專案已不接受報價"})
+        
+        # 檢查截止日期
+        deadline_dt = None
+        if project_detail.get('deadline_datetime'):
+            deadline_dt = project_detail['deadline_datetime']
+        elif project_detail.get('create_time') and project_detail.get('deadline'):
+            deadline_dt = project_detail['create_time'] + timedelta(minutes=project_detail['deadline'])
+        
+        if deadline_dt and datetime.now() > deadline_dt:
+            return JSONResponse(status_code=400, content={"success": False, "message": "很抱歉，此專案已過截止日期，無法提交報價"})
+        
+        # 處理檔名防止覆蓋：使用 專案ID_接案人ID_時間戳_原始檔名
+        
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_filename = re.sub(r'[<>:"/\\|?*\x00-\x1F]', '_', filename_str)
+        unique_filename = f"proposal_{project_id}_{freelancer_id}_{timestamp}_{safe_filename}"
+        
+        # 儲存檔案
+        upload_dir = "html/uploads/proposals"
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, unique_filename)
+        
+        with open(file_path, "wb") as buffer:
+            content = await proposal_file.read()
+            buffer.write(content)
+        
+        # 儲存相對路徑
+        relative_path = f"uploads/proposals/{unique_filename}"
+        
+        await bids.create_bid(conn, project_id, freelancer_id, bid_amount, message, relative_path)
         
         project_detail = await posts.getPost(conn, project_id)
         client_user = await users.get_user_by_username(conn, project_detail['client_username'])
@@ -468,6 +606,11 @@ async def reject_project(
         if project['status'] != 'delivered':
             raise HTTPException(status_code=400, detail="此專案並非在『已交付』狀態")
 
+        # 標記最新版本為已拒絕
+        latest_version = await deliveries.get_latest_delivery_version(conn, project_id)
+        if latest_version:
+            await deliveries.update_delivery_status(conn, latest_version['id'], 'rejected')
+
         await posts.update_project_status(conn, project_id, 'rejected')
         
         freelancer = await users.get_user_by_username(conn, project['accepted_freelancer_username'])
@@ -519,34 +662,50 @@ async def deliver_project(
         if delivery_file.filename is None:
             raise HTTPException(status_code=400, detail="上傳的檔案缺少檔名")
         
-        safe_name = safeFilename(delivery_file.filename)
+        # 取得下一個版本號
+        latest_version = await deliveries.get_latest_version_number(conn, project_id)
+        next_version = latest_version + 1
+        
+        # 處理檔名防止覆蓋：使用 專案ID_版本號_時間戳_原始檔名
+        timestamp = date.today().strftime("%Y%m%d_%H%M%S")
+        safe_name = re.sub(r'[<>:"/\\|?*\x00-\x1F]', '_', delivery_file.filename)
+        unique_filename = f"delivery_{project_id}_v{next_version}_{timestamp}_{safe_name}"
         
         upload_dir = "html/uploads/deliveries"
         os.makedirs(upload_dir, exist_ok=True) 
-        file_path_for_db = f"uploads/deliveries/{project_id}_{safe_name}"
-        full_save_path = os.path.join(upload_dir, f"{project_id}_{safe_name}")
+        file_path_for_db = f"uploads/deliveries/{unique_filename}"
+        full_save_path = os.path.join(upload_dir, unique_filename)
 
         with open(full_save_path, "wb") as buffer:
             buffer.write(await delivery_file.read())
-
+        
+        # 創建新版本記錄
+        await deliveries.create_delivery_version(
+            conn, 
+            project_id, 
+            current_user['id'], 
+            file_path_for_db, 
+            next_version
+        )
+        
+        # 更新專案狀態為已交付
         await posts.update_project_delivery(conn, project_id, file_path_for_db)
         
         await notifications.create_notification(
             conn,
             user_id=client_id["user_id"],
-            message=f"接案人已對您的專案「{project_detail['title']}」提交檔案。",
+            message=f"接案人已對您的專案「{project_detail['title']}」提交檔案（版本 {next_version}）。",
             link=f"/page/my-projects/read/{project_id}"
         )
         
-        return JSONResponse(status_code=200, content={"success": True, "message": "結案檔案上傳成功！已通知委託人。"})
+        return JSONResponse(status_code=200, content={"success": True, "message": f"結案檔案版本 {next_version} 上傳成功！已通知委託人。"})
 
     except HTTPException as e:
         raise e
     except Exception as e:
         await conn.rollback()
-        print(f": {e}")
+        print(f"交付錯誤: {e}")
         return JSONResponse(status_code=500, content={"success": False, "message": f"伺服器錯誤: {str(e)}"})
-    
 
 
 @app.get("/page/my-jobs", response_class=HTMLResponse)
@@ -563,12 +722,31 @@ async def get_my_jobs_page(req: Request, conn = Depends(getDB), user_name:str=De
     
     project_list = await posts.get_projects_by_freelancer(conn, freelancer_id)
     
+    # 定義台灣時區
+    tw_tz = ZoneInfo("Asia/Taipei")
+
     for item in project_list:
-        if item.get('create_time') and item.get('deadline') is not None:
-            item['deadline_date'] = item['create_time'] + timedelta(days=item['deadline'])
+        d_dt = item.get('deadline_datetime')
+        
+        # 如果資料庫沒存絕對時間，才勉強用 create_time + deadline 分鐘數
+        if d_dt is None and item.get('create_time') and item.get('deadline') is not None:
+             d_dt = item['create_time'] + timedelta(minutes=item['deadline'])
+
+        if d_dt:
+            # 如果資料庫拿出來的是 Naive (沒有時區資訊，通常是 UTC)，先視為 UTC
+            if d_dt.tzinfo is None:
+                d_dt = d_dt.replace(tzinfo=ZoneInfo("UTC"))
+            
+            # 強制轉成台灣時間
+            item['deadline_date'] = d_dt.astimezone(tw_tz)
         else:
             item['deadline_date'] = None
-        
+            
+        is_deadline_passed = False
+        if item.get("deadline_date"):
+            is_deadline_passed = datetime.now(tw_tz) > item["deadline_date"]
+            item["is_deadline_passed"] = is_deadline_passed
+
         item['status_text'] = translate_status(item.get('status', ''))
 
     return templates.TemplateResponse("partials/my_jobs.html", {
@@ -594,6 +772,12 @@ async def complete_project(
         
         if project['status'] != 'delivered':
             raise HTTPException(status_code=400, detail="此專案並非在『已交付』狀態")
+        
+        # 標記最新版本為已接受
+        latest_version = await deliveries.get_latest_delivery_version(conn, project_id)
+        if latest_version:
+            await deliveries.update_delivery_status(conn, latest_version['id'], 'accepted')
+
 
         await posts.update_project_status(conn, project_id, 'completed')
         
@@ -632,11 +816,26 @@ async def get_history_page(req: Request, conn = Depends(getDB), user:str=Depends
     
     history_items = await posts.get_history_projects(conn, user_id, role)
     
+    # 定義台灣時區
+    tw_tz = ZoneInfo("Asia/Taipei")
+
     for item in history_items:
-        if item.get('create_time') and item.get('deadline') is not None:
-            item['deadline_date'] = item['create_time'] + timedelta(days=item['deadline'])
+        d_dt = item.get('deadline_datetime')
+        
+        # 如果資料庫沒存絕對時間，才勉強用 create_time + deadline 分鐘數
+        if d_dt is None and item.get('create_time') and item.get('deadline') is not None:
+             d_dt = item['create_time'] + timedelta(minutes=item['deadline'])
+
+        if d_dt:
+            # 如果資料庫拿出來的是 Naive (沒有時區資訊，通常是 UTC)，先視為 UTC
+            if d_dt.tzinfo is None:
+                d_dt = d_dt.replace(tzinfo=ZoneInfo("UTC"))
+            
+            # 強制轉成台灣時間
+            item['deadline_date'] = d_dt.astimezone(tw_tz)
         else:
             item['deadline_date'] = None
+
         item['status_text'] = translate_status(item.get('status', ''))
 
     return templates.TemplateResponse("partials/history.html", {
@@ -780,6 +979,11 @@ async def get_project_issues_page(
     stats = await issues.get_issue_statistics(conn, project_id)
     role = current_user['role']
     
+    for issue in issues_list:
+        if issue['created_at'].tzinfo is None:
+            issue['created_at'] = issue['created_at'].replace(tzinfo=ZoneInfo("UTC"))
+        issue['created_at'] = issue['created_at'].astimezone(ZoneInfo("Asia/Taipei"))
+    
     return templates.TemplateResponse("partials/project_issues.html", {
         "request": req,
         "project": project,
@@ -855,6 +1059,10 @@ async def get_issue_detail_page(
     project = await posts.getPost(conn, project_id)
     issue = await issues.get_issue_by_id(conn, issue_id)
     
+    if issue['created_at'].tzinfo is None:
+        issue['created_at'] = issue['created_at'].replace(tzinfo=ZoneInfo("UTC"))
+    issue['created_at'] = issue['created_at'].astimezone(ZoneInfo("Asia/Taipei"))
+    
     if not project or not issue:
         return HTMLResponse("<h1>找不到資料</h1>", status_code=404)
     
@@ -905,6 +1113,8 @@ async def add_issue_comment_api(
         
         
         new_comment = await issues.create_issue_comment(conn, issue_id, current_user['id'], comment)
+        
+        
         
         
         notify_user = None
@@ -1028,7 +1238,7 @@ async def reopen_issue_api(
             "message": f"伺服器錯誤: {str(e)}"
         })
         
-@app.post("/submit-review/{project_id}")
+@app.post("/api/submit-review/{project_id}")
 async def submit_review(
     req: Request,
     project_id: int,
@@ -1069,13 +1279,14 @@ async def submit_review(
         await conn.commit()
         
         
+        
         project_title = project['title']
         notify_msg = f"專案「{project_title}」收到了一則來自 {current_user['username']} 的新評價！"
-        notify_msg2 = f"您已完成對專案「{project_title}」合作夥伴 {current_user['username']} 的評價！"
+        notify_msg2 = f"您已完成對專案「{project_title}」合作夥伴 {project['accepted_freelancer_username']} 的評價！"
         notify_link = f"/page/my-projects/read/{project_id}"
         
         await notifications.create_notification(conn, target_user_id, notify_msg, notify_link)
-        await notifications.create_notification(conn, current_user["id"], notify_msg, notify_link)
+        await notifications.create_notification(conn, current_user["id"], notify_msg2, notify_link)
         
         return JSONResponse(status_code=200, content={"success": True, "message": "評價送出成功！"})
     except Exception as e:

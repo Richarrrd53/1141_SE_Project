@@ -1,53 +1,116 @@
 <section class="content-area" id="contentArea">
-    <h1>建立新委託專案</h1>
-    <p>請詳細填寫您的專案需求。</p>
-    <hr>
     
-    <table id="project-info">
-        <tr>
-            <th>委託人：{{ user }}</th>
-            <th>發布日期：{{ today_date }}</th>
-        </tr>
-    </table>
-    <hr>
-    
+    <div style="margin-bottom: 30px;">
+        <h1 style="font-size: 28px; font-weight: 800; color: #111827; margin: 0 0 10px 0;">建立新委託專案</h1>
+        <p style="color: #6b7280; margin: 0;">填寫下方資訊以發布您的需求，標有 * 為必填欄位。</p>
+    </div>
+
     <form id="create-project-form">
-        <div>
-            <label for="title">專案標題:</label><br>
-            <input type="text" id="title" name="title" required>
-        </div>
-        
-        <div>
-            <label for="description">詳細需求描述:</label><br>
-            <input type="hidden" id="content" name="content">
-            <textarea id="description" name="description" rows="10" required></textarea>
-        </div>
-        
-        <div>
-            <label for="budget">預算 (TWD):</label><br>
-            <input type="number" id="budget" name="budget" required>
-        </div>
+        <div class="form-grid">
+            
+            <div class="main-column">
+                <div class="form-card">
+                    <div class="section-title">
+                        <span style="background: #e0e7ff; color: #4f46e5; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">1</span>
+                        專案核心資訊
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="title" class="form-label">專案標題 *</label>
+                        <input type="text" id="title" name="title" class="form-input" placeholder="例如：日系風格活動網站設計、Python 數據爬蟲程式..." required>
+                    </div>
 
-        <div>
-            <label for="deadline">截止日期與時間:</label><br>
-            <input type="datetime-local" id="deadline" name="deadline" required>
-            <small style="color: #666;">請選擇投標截止的日期與時間</small>
-        </div>
-        <script>
-            // 設定預設截止時間為 7 天後
-            const now = new Date();
-            now.setDate(now.getDate() + 7);
-            const defaultDeadline = now.toISOString().slice(0, 16);
-            document.getElementById('deadline').value = defaultDeadline;
-            // 設定最小時間為現在
-            const minDate = new Date().toISOString().slice(0, 16);
-            document.getElementById('deadline').min = minDate;
-        </script>
+                    <div class="form-group">
+                        <label for="description" class="form-label">詳細需求描述 *</label>
+                        <input type="hidden" id="content" name="content">
+                        
+                        <div class="editor-container">
+                            <div class="editor-toolbar">
+                                <button type="button" class="toolbar-btn" title="Bold">B</button>
+                                <button type="button" class="toolbar-btn" title="Italic" style="font-style: italic;">I</button>
+                                <button type="button" class="toolbar-btn" title="List">≡</button>
+                                <button type="button" class="toolbar-btn" title="Link">🔗</button>
+                            </div>
+                            <textarea id="description" name="description" class="editor-textarea" placeholder="請詳細描述您的需求、預期功能、風格參考或是技術限制..." required></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-        <button type="button" id="submitBtn" onclick='notifyWindow("是否發布這則委託專案？", "發布", "create", 0, false);'>
-            發布委託
-        </button>
+            <div class="side-column">
+                
+                <div class="form-card">
+                    <div class="section-title">
+                        <span style="background: #d1fae5; color: #059669; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">2</span>
+                        條件設定
+                    </div>
+
+                    <div class="form-group">
+                        <label for="budget" class="form-label">預算金額 *</label>
+                        <div class="input-group">
+                            <span class="input-prefix">$</span>
+                            <input type="number" id="budget" name="budget" class="form-input has-prefix" placeholder="5000" required>
+                            <span class="input-suffix">TWD</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="deadline" class="form-label">截止時間 *</label>
+                        <input type="datetime-local" id="deadline" name="deadline" class="form-input" required>
+                        <small style="color: #6b7280; font-size: 12px; margin-top: 5px; display: block;">
+                            預設為 7 天後截止
+                        </small>
+                    </div>
+                </div>
+
+                <div class="form-card" style="background-color: #f9fafb;">
+                    <div class="section-title" style="font-size: 16px; border: none; padding: 0; margin-bottom: 15px;">
+                        摘要資訊
+                    </div>
+                    <div class="summary-item">
+                        <span>委託人</span>
+                        <span class="summary-value">{{ user }}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>發布日期</span>
+                        <span class="summary-value">{{ today_date }}</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>狀態</span>
+                        <span class="summary-value" style="color: #4f46e5;">草稿</span>
+                    </div>
+
+                    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+
+                    <button type="button" id="submitBtn" class="btn btn-submit" onclick='notifyWindow("是否確認發布這則委託專案？", "確認發布", "create", 0, false);'>
+                        發布委託
+                    </button>
+                </div>
+
+            </div>
+        </div>
     </form>
+
+    <script>
+        // 設定預設截止時間與最小時間 (保持你原本的邏輯，但封裝更整潔)
+        (function() {
+            const dateInput = document.getElementById('deadline');
+            const now = new Date();
+            
+            // 最小時間設為現在 (考慮時區調整，這裡簡單處理)
+            const tzOffset = now.getTimezoneOffset() * 60000; // offset in milliseconds
+            const localISOTime = (new Date(now - tzOffset)).toISOString().slice(0, 16);
+            dateInput.min = localISOTime;
+
+            // 預設時間為 7 天後
+            const defaultDate = new Date(now);
+            defaultDate.setDate(defaultDate.getDate() + 7);
+            const defaultISOTime = (new Date(defaultDate - tzOffset)).toISOString().slice(0, 16);
+            
+            dateInput.value = defaultISOTime;
+        })();
+    </script>
+
 </section>
 
 <div id="loading">
@@ -55,7 +118,6 @@
         <div class="jelly-triangle__dot"></div>
         <div class="jelly-triangle__traveler"></div>
     </div>
-
     <svg width="0" height="0" class="jelly-maker">
         <defs>
             <filter id="uib-jelly-triangle-ooze">
@@ -65,5 +127,5 @@
             </filter>
         </defs>
     </svg>
-    <div class="loading-text" id="loadingText">請稍後...</div>
+    <div class="loading-text" id="loadingText">處理中...</div>
 </div>

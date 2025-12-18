@@ -25,6 +25,17 @@ document.addEventListener("DOMContentLoaded", () => {
         tempPage = 0;
         menuLinkClick(5);
     }
+
+    $("logoSection").addEventListener("click", () => {
+        if($("menu-client")){
+            tempPage = 0;
+            menuLinkClick(1);
+        }
+        if($("menu-freelancer")){
+            tempPage = 0;
+            menuLinkClick(5);
+        }
+    });
     
     setTimeout(() => {
         document.body.style.opacity = 1;
@@ -35,16 +46,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         let isChecked = $("label-check").checked;
         if(!isChecked){
-            $("mainContent").style.width = "calc(100% - 76px - 80px - 30px - 10px - 210px)";
-            $("mainContent").style.left = 286 + "px";
+            $("mainContent").style.width = "calc(100% - 116px - 80px - 30px - 10px - 200px)";
+            $("mainContent").style.left = 316 + "px";
             for (let i = 0; i < vmenuLinks.children.length; i++){
                 vmenuLinks.children[i].children[0].children[1].textContent = tempLinks[i];
-                vmenuLinks.children[i].children[0].style.width = 230 + "px";
+                vmenuLinks.children[i].children[0].style.width = 210 + "px";
             }
         }
         else{
-            $("mainContent").style.width = "calc(100% - 76px - 80px - 30px - 10px)";
-            $("mainContent").style.left = 76 + "px";
+            $("mainContent").style.width = "calc(100% - 116px - 80px - 30px - 10px)";
+            $("mainContent").style.left = 116 + "px";
             for (let i = 0; i < vmenuLinks.children.length; i++){
                 vmenuLinks.children[i].children[0].children[1].textContent = "";
                 vmenuLinks.children[i].children[0].style.width = 20 + "px";
@@ -58,14 +69,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         let isChecked = $("notifyCheck").checked;
         if(!isChecked){
-            $("mainContent").style.width = "calc(100% - 76px - 80px - 30px - 10px - 400px - 40px)";
+            $("mainContent").style.width = "calc(100% - 116px - 80px - 30px - 10px - 400px - 40px)";
             $("notifyDropdown").style.right = 10 + "px";
             $("notifyBell").children[0].src = $("notifyBell").children[0].src.replace("blur", "focus");
             checkNotifications();
 
         }
         else{
-            $("mainContent").style.width = "calc(100% - 76px - 80px - 30px - 10px)";
+            $("mainContent").style.width = "calc(100% - 116px - 80px - 30px - 10px)";
             $("notifyDropdown").style.right = -420 + "px";
             $("notifyBell").children[0].src = $("notifyBell").children[0].src.replace("focus", "blur");
         }
@@ -206,6 +217,8 @@ async function deletePost(n) {
             $("loading").style.filter = "blur(0)";
         }, 10);
         const response = await fetch(`/page/my-projects/delete/${n}`, { method: "DELETE", credentials: "include"});
+        const data = await response.json();
+
         if(response.ok){
             setTimeout(() => {
                 notifyWindow("刪除成功！","","alert",0,false);
@@ -213,12 +226,13 @@ async function deletePost(n) {
             tempPage = 0;
             menuLinkClick(1);
         }
-        else{
-            console.error("權限不足或未登入");
+        else {
             setTimeout(() => {
-                notifyWindow("你沒有權限執行此操作！"+response.json().message,"","alert",0,false);
+                notifyWindow("錯誤："+data.detail,"","alert",0,false);
+                loadContent(`/page/my-projects/read/${n}`);
             }, 500);
         }
+        
     } catch (error) {
         console.error('載入內容時發生錯誤:', error);
         $("mainContent").innerHTML = "<h1>內容載入失敗</h1>";
@@ -241,13 +255,17 @@ async function editorSubmit(){
             $("loading").style.filter = "blur(0)";
         }, 10);
         const response = await fetch(`/page/my-projects/edit/${id}`,{method: "POST",body: formData});
-        if(response.ok){
-            tempPage = 0;
-            menuLinkClick(1);
-        }
-        else{
-            console.error('載入內容時發生錯誤111:', error);
-            $("mainContent").innerHTML = "<h1>內容載入失敗</h1>";
+        const data = await response.json();
+        if (response.ok) {
+            setTimeout(() => {
+                notifyWindow(data.message,"","alert",0,false);
+            }, 500);
+            loadContent(`/page/my-projects/read/${id}`);
+        } else {
+            setTimeout(() => {
+                notifyWindow("錯誤："+data.detail,"","alert",0,false);
+                loadContent(`/page/my-projects/read/${id}`);
+            }, 500);
         }
     } catch (error) {
         console.error('載入內容時發生錯誤222:', error);
@@ -379,8 +397,9 @@ async function submitCreateProject() {
         else{
             console.error('建立失敗:', data.message);
             setTimeout(() => {
-                notifyWindow("建立專案失敗：" + data.message,"","alert",0,false);
+                notifyWindow("建立專案失敗：" + data.detial,"","alert",0,false);
             }, 500);
+            menuLinkClick(1);
         }
     } catch (error) {
         console.error('建立專案時發生錯誤:', error);
@@ -414,8 +433,9 @@ async function submitBids(){
             }, 500);
         } else {
             setTimeout(() => {
-                notifyWindow("錯誤：" + data.message,"","alert",0,false);
+                notifyWindow("錯誤：" + data.detial,"","alert",0,false);
             }, 500);
+            loadContent(`/page/my-projects/read/${formData.get('project_id')}`);
         }
     } catch (error) {
         console.error(':', error);
@@ -447,9 +467,10 @@ async function submitAcceptBid(bid_id) {
             menuLinkClick(1);
         } else {
             setTimeout(() => {
-                notifyWindow("錯誤：" + data.message,"","alert",0,false);
+                notifyWindow("錯誤：" + data.detial,"","alert",0,false);
 
             }, 500);
+            menuLinkClick(1);
         }
     } catch (error) {
         console.error(':', error);
@@ -485,6 +506,7 @@ async function submitDelivery(n){
             setTimeout(() => {
                 notifyWindow("錯誤："+data.detail,"","alert",0,false);
             }, 500);
+            loadContent(`/page/my-projects/read/${n}`);
         }
     } catch (error) {
         console.error(':', error);
@@ -511,11 +533,12 @@ async function submitAcceptDelivery(project_id) {
             setTimeout(() => {
                 notifyWindow(data.message,"","alert",0,false);
             }, 500);
-            loadContent(`/page/my-projects/read/${project_id}`); // 
+            loadContent(`/page/my-projects/read/${project_id}`);
         } else {
             setTimeout(() => {
                 notifyWindow("錯誤："+data.detail,"","alert",0,false);
             }, 500);
+            loadContent(`/page/my-projects/read/${project_id}`);
         }
     } catch (error) {
         console.error(':', error);
@@ -541,11 +564,12 @@ async function submitRejectDelivery(project_id) {
             setTimeout(() => {
                 notifyWindow(data.message,"","alert",0,false);
             }, 500);
-            loadContent(`/page/my-projects/read/${project_id}`); // 
+            loadContent(`/page/my-projects/read/${project_id}`);
         } else {
             setTimeout(() => {
                 notifyWindow("錯誤："+data.detail,"","alert",0,false);
             }, 500);
+            loadContent(`/page/my-projects/read/${project_id}`);
         }
     } catch (error) {
         console.error(':', error);
@@ -576,6 +600,7 @@ async function submitRestoreProject(project_id) {
             setTimeout(() => {
                 notifyWindow("錯誤："+data.detail,"","alert",0,false);
             }, 500);
+            loadContent("/page/history");
         }
     } catch (error) {
         console.error(':', error);
@@ -616,6 +641,201 @@ async function submitCreateReview(project_id) {
     }
 }
 
+async function submitCreateIssue(projectId) {
+    console.log('submitCreateIssue 被調用, projectId:', projectId);
+    
+    const formElement = $('create-issue-form');
+    const titleInput = $('issue-title');
+    const descInput = $('issue-description');
+    const submitBtn = $('create-issue-btn');
+    
+    if (!formElement) {
+        console.error('找不到表單元素');
+        alert('表單載入錯誤，請重新整理頁面');
+        return;
+    }
+    
+    
+    if (!titleInput || !titleInput.value.trim()) {
+        alert('請輸入標題');
+        if (titleInput) titleInput.focus();
+        return;
+    }
+    
+    if (!descInput || !descInput.value.trim()) {
+        alert('請輸入詳細說明');
+        if (descInput) descInput.focus();
+        return;
+    }
+    const formData = new FormData(formElement);
+    
+    try {
+        
+        $("loading").style.transition = "all 0.5s cubic-bezier(.33,1.53,.69,.99)";
+        setTimeout(() => {
+            $("loading").style.opacity = 1;
+            $("loading").style.scale = 1;
+            $("loading").style.filter = "blur(0)";
+        }, 10);
+        
+        const response = await fetch(`/api/project/${projectId}/issue/create`, {
+            method: "POST",
+            body: formData,
+            credentials: "include"
+        });
+        const data = await response.json();
+        
+        if (response.ok) {
+            
+            loadContent(`/page/project/${projectId}/issues`);
+            setTimeout(() => {
+                notifyWindow("Issue 建立成功!", "", "alert", 0, false);
+            }, 500);
+        } else {
+            setTimeout(() => {
+                notifyWindow("錯誤: " + (data.detail || '建立失敗'), "", "alert", 0, false);
+            }, 500)
+            loadContent(`/page/project/${projectId}/issues`);
+        }
+    } catch (error) {
+        console.error('建立 Issue 時發生錯誤:', error);
+        notifyWindow("發生網路錯誤: " + (error.detail || '建立失敗'), "", "alert", 0, false);
+    }
+}
+
+async function submitComment(issueId) {
+    
+    const formElement = document.getElementsByClassName('comment-form')[0];
+    const project_id = formElement.id.split("-")[3];
+    const commentInput = $('comment-text');
+    
+    if (!formElement || !commentInput) {
+        alert('表單載入錯誤');
+        return;
+    }
+    
+    const formData = new FormData(formElement);
+    
+    if (!formData.get('comment').trim()) {
+        alert('留言內容不能為空');
+        commentInput.focus();
+        return;
+    }
+    
+    try {
+        $("loading").style.transition = "all 0.5s cubic-bezier(.33,1.53,.69,.99)";
+        setTimeout(() => {
+            $("loading").style.opacity = 1;
+            $("loading").style.scale = 1;
+            $("loading").style.filter = "blur(0)";
+        }, 10);
+        
+        const response = await fetch(`/api/issue/${issueId}/comment`, {
+            method: "POST",
+            body: formData,
+            credentials: "include"
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            
+
+            loadContent(`/page/project/${project_id}/issue/${issueId}`);
+            setTimeout(() => {
+                notifyWindow("留言成功!", "", "alert", 0, false);
+            }, 500);
+        } else {
+            loadContent(`/page/project/${project_id}/issue/${issueId}`);
+            setTimeout(() => {
+                notifyWindow("錯誤: " + data.detial, "", "alert", 0, false);
+            }, 500);
+        }
+    } catch (error) {
+        console.error('建立 Issue 時發生錯誤:', error);
+        notifyWindow("發生網路錯誤: " + (error.detail || '建立失敗'), "", "alert", 0, false);
+    }
+}
+
+async function resolveIssue(issueId) {
+    try {
+        $("loading").style.transition = "all 0.5s cubic-bezier(.33,1.53,.69,.99)";
+        setTimeout(() => {
+            $("loading").style.opacity = 1;
+            $("loading").style.scale = 1;
+            $("loading").style.filter = "blur(0)";
+        }, 10);
+        
+        const response = await fetch(`/api/issue/${issueId}/resolve`, {
+            method: "POST",
+            credentials: "include"
+        });
+        
+        const data = await response.json();
+        
+        const issueMainCard = document.getElementsByClassName('issue-main-card')[0];
+        const projectId = issueMainCard.id.split("-")[1];
+        if (response.ok) {
+            
+            loadContent(`/page/project/${projectId}/issue/${issueId}`);
+            setTimeout(() => {
+                notifyWindow(data.message, "", "alert", 0, false);
+                if (data.all_resolved) {
+                    setTimeout(() => {
+                        notifyWindow("所有 Issue 都已解決!您現在可以結案了", "", "alert", 0, false);
+                    }, 2500);
+                }
+            }, 500);
+        } else {
+            setTimeout(() => {
+                notifyWindow("錯誤: " + data.detail, "", "alert", 0, false);
+            }, 500);
+            loadContent(`/page/project/${projectId}/issue/${issueId}`);
+        }
+    } catch (error) {
+        console.error('建立 Issue 時發生錯誤:', error);
+        notifyWindow("發生網路錯誤: " + (error.detail || '建立失敗'), "", "alert", 0, false);
+    }
+}
+
+async function reopenIssue(issueId) {
+    
+    try {
+        $("loading").style.transition = "all 0.5s cubic-bezier(.33,1.53,.69,.99)";
+        setTimeout(() => {
+            $("loading").style.opacity = 1;
+            $("loading").style.scale = 1;
+            $("loading").style.filter = "blur(0)";
+        }, 10);
+        
+        const response = await fetch(`/api/issue/${issueId}/reopen`, {
+            method: "POST",
+            credentials: "include"
+        });
+        
+        const data = await response.json();
+        const issueMainCard = document.getElementsByClassName('issue-main-card')[0];
+        const projectId = issueMainCard.id.split("-")[1];
+        
+        if (response.ok) {
+            
+            loadContent(`/page/project/${projectId}/issue/${issueId}`);
+            setTimeout(() => {
+                notifyWindow(data.message, "", "alert", 0, false);
+            }, 500);
+        } else {
+            setTimeout(() => {
+                notifyWindow("錯誤: " + data.detail, "", "alert", 0, false);
+            }, 500);
+            loadContent(`/page/project/${projectId}/issue/${issueId}`);
+        }
+    } catch (error) {
+        console.error('建立 Issue 時發生錯誤:', error);
+        notifyWindow("發生網路錯誤: " + (error.detail || '建立失敗'), "", "alert", 0, false);
+    }
+}
+
+
 
 
 async function checkNotifications() {
@@ -626,7 +846,6 @@ async function checkNotifications() {
     if (!notifyBell) return;
 
     try {
-        
         const response = await fetch("/api/notifications");
         const notifs = await response.json();
 
@@ -635,23 +854,54 @@ async function checkNotifications() {
             notifyCount.innerText = notifs.length;
             notifyCount.style.display = 'block';
 
-            notifyDropdown.innerHTML = "";
+            notifyDropdown.innerHTML = `<div class="notify-header-title"><img src="./img/bell.svg">通知中心</div>`;
+            
             for (const notif of notifs) {
+                
+                let icon = '<img src="./img/bell.svg"style="filter: invert(51%) sepia(83%) saturate(7493%) hue-rotate(578deg) brightness(95%) contrast(101%);">'; 
+                let typeClass = 'type-system';
+
+                if (notif.message.includes("報價") || notif.message.includes("金額")) {
+                    icon = '<img src="./img/bid.svg" style="filter: invert(39%) sepia(83%) saturate(7493%) hue-rotate(57deg) brightness(205%) contrast(101%);">';
+                    typeClass = 'type-bid';
+                } else if (notif.message.includes("結案") || notif.message.includes("成功") || notif.message.includes("接受")) {
+                    icon = '<img src="./img/correct.svg">';
+                    typeClass = 'type-success';
+                } else if (notif.message.includes("刪除") || notif.message.includes("退回") || notif.message.includes("警告")) {
+                    icon = '<img src="./img/delete.svg">';
+                    typeClass = 'type-alert';
+                } else if (notif.message.includes("評價")) {
+                    icon = '<img src="./img/star2.svg" style="filter: invert(51%) sepia(83%) saturate(7493%) hue-rotate(774deg) brightness(187%) contrast(101%);">';
+                    typeClass = 'type-bid';
+                }
+
                 notifyDropdown.innerHTML += `
-                    <li class="notify-item">
-                        <a class="notifyLinks" onclick="loadContentAndMarkRead('${notif.link}'); closeNotification();">
-                            ${notif.message}
-                        </a>
+                    <li class="notify-item" onclick="loadContentAndMarkRead('${notif.link}'); closeNotification();">
+                        <div class="notify-icon-box ${typeClass}">
+                            ${icon}
+                        </div>
+                        <div class="notify-content">
+                            <a class="notifyLinks" href="javascript:void(0);">
+                                ${notif.message}
+                            </a>
+                            <span class="notify-time">${notif.time || '剛剛'}</span>
+                        </div>
                     </li>
                 `;
             }
         } else {
             notifyBell.classList.remove("has-unread");
             notifyCount.style.display = 'none';
-            notifyDropdown.innerHTML = "<li>目前沒有通知。</li>";
+            notifyDropdown.innerHTML = `
+                <div class="notify-header-title">🔔 通知中心</div>
+                <div style="text-align: center; color: #9ca3af; padding: 40px;">
+                    <img src="./img/empty_box.svg" style="width: 40px; opacity: 0.3; margin-bottom: 10px; display: block; margin: 0 auto 10px;">
+                    目前沒有新通知
+                </div>
+            `;
         }
     } catch (error) {
-        console.error(":", error);
+        console.error("Notification Error:", error);
     }
 }
 
@@ -671,3 +921,5 @@ async function loadContentAndMarkRead(link) {
     
     checkNotifications();
 }
+
+

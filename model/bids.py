@@ -17,7 +17,7 @@ async def check_bid(conn, project_id, freelancer_id):
         else:
             return False
 
-async def create_bid(conn, project_id, freelancer_id, bid_amount, message: str, proposal_file_path: str | None = None):
+async def create_bid(conn, project_id, freelancer_id, bid_amount, message: str, proposal_file_path: str):
     async with conn.cursor(row_factory=dict_row) as cur:
         sql_check = "SELECT 1 FROM bids WHERE project_id = %s AND freelancer_id = %s"
         await cur.execute(sql_check, (project_id, freelancer_id))

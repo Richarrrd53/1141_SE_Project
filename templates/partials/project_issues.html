@@ -1,90 +1,108 @@
 <section class="content-area" id="contentArea">
-    <h1>{{ project.title }} - 待解決事項</h1>
     
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-        <div>
-            <button onclick="loadContent('/page/my-projects/read/{{ project.id }}');" style="background: #eef2ff; color: #2F4189;">
-                ← 返回專案
+    <div style="margin-bottom: 30px;">
+        <div class="btnContainer">
+            <button onclick="loadContent('/page/my-projects/read/{{ project.id }}');">
+                <img src="./img/back.svg">
+                <span>返回專案詳情</span>
             </button>
         </div>
-        <div style="display: flex; gap: 20px; font-size: 18px;">
-            <span>總計: <strong>{{ stats.total_issues }}</strong></span>
-            <span style="color: #f7d344;">未解決: <strong>{{ stats.open_issues }}</strong></span>
-            <span style="color: #4CAF50;">已解決: <strong>{{ stats.resolved_issues }}</strong></span>
+    </div>
+
+    <div class="page-header">
+        <h1 class="page-title">{{ project.title }} <span style="font-weight: normal; color: #6b7280;">- 待解決事項</span></h1>
+        <p style="color: #6b7280; font-size: 14px; margin-top: 5px;">追蹤專案中的修改需求與討論。</p>
+    </div>
+    
+    <div class="stats-overview">
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total_issues }}</div>
+            <div class="stat-label">總事項</div>
+        </div>
+        <div class="stat-card" style="border-bottom: 4px solid #f59e0b;">
+            <div class="stat-value" style="color: #d97706;">{{ stats.open_issues }}</div>
+            <div class="stat-label">未解決</div>
+        </div>
+        <div class="stat-card" style="border-bottom: 4px solid #10b981;">
+            <div class="stat-value" style="color: #059669;">{{ stats.resolved_issues }}</div>
+            <div class="stat-label">已解決</div>
         </div>
     </div>
 
     {% if role == 'client' and project.status == 'delivered' %}
-    <div style="background: #fff8dd; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
-        <h3 style="margin-top: 0;">建立新的待解決事項</h3>
+    <div class="form-card" style="border: 2px solid #fcd34d; background: #fffbeb;">
+        <div class="section-title" style="border-bottom-color: #fce7f3; color: #92400e;">
+            <img src="./img/write.svg" style="width: 16px; height: 16px; margin-right: 4px;">建立新的待解決事項
+        </div>
         <form id="create-issue-form" onsubmit="event.preventDefault(); submitCreateIssue({{ project.id }});">
-            <div style="margin-bottom: 15px;">
-                <label for="issue-title">標題:</label>
-                <input type="text" id="issue-title" name="title" required style="width: 100%;" placeholder="例如: 首頁橫幅尺寸需調整">
+            <div class="form-group">
+                <label class="form-label" style="color: #92400e;">標題</label>
+                <input type="text" id="issue-title" name="title" class="form-input" required placeholder="例如: 首頁橫幅尺寸需調整">
             </div>
-            <div style="margin-bottom: 15px;">
-                <label for="issue-description">詳細說明:</label>
-                <textarea id="issue-description" name="description" rows="4" required style="width: 100%;" placeholder="請詳細描述需要調整的內容..."></textarea>
+            <div class="form-group">
+                <label class="form-label" style="color: #92400e;">詳細說明</label>
+                <textarea id="issue-description" name="description" class="form-input" rows="3" required placeholder="請詳細描述需要調整的內容..."></textarea>
             </div>
-            <button type="submit" id="create-issue-btn">
+            <button type="submit" id="create-issue-btn" class="btn btn-submit" style="background: #f59e0b; color: white;">
                 建立 Issue
             </button>
         </form>
     </div>
     {% endif %}
 
-    <hr>
-
     {% if issues %}
-    <div style="display: grid; gap: 15px;">
+    <div class="issue-list">
         {% for issue in issues %}
-        <div class="issue-card" style="
-            background: {% if issue.status == 'open' %}#fff8dd{% else %}#f0f0f0{% endif %};
-            padding: 20px;
-            border-radius: 15px;
-            cursor: pointer;
-            transition: all 0.3s;
-        " onclick="loadContent('/page/project/{{ project.id }}/issue/{{ issue.id }}');">
-            <div style="display: flex; justify-content: space-between; align-items: start;">
-                <div style="flex: 1;">
-                    <h3 style="margin: 0 0 10px 0;">
-                        {{ issue.title }}
-                        {% if issue.status == 'open' %}
-                        <span class="link-in_progress" style="font-size: 14px; margin-left: 10px;">未解決</span>
-                        {% else %}
-                        <span class="link-completed" style="font-size: 14px; margin-left: 10px;">已解決</span>
-                        {% endif %}
-                    </h3>
-                    <p style="color: #666; margin: 0 0 10px 0;">{{ issue.description[:100] }}{% if issue.description|length > 100 %}...{% endif %}</p>
-                    <div style="font-size: 14px; color: #888;">
-                        <span>建立者: {{ issue.creator_username }}</span> | 
-                        <span>建立時間: {{ issue.created_at.strftime('%Y-%m-%d %H:%M') }}</span> |
-                        <span>💬 {{ issue.comment_count }} 則留言</span>
-                    </div>
+        <div class="issue-card {% if issue.status == 'open' %}card-open{% else %}card-resolved{% endif %}" 
+                onclick="loadContent('/page/project/{{ project.id }}/issue/{{ issue.id }}');">
+            
+            <div class="issue-content">
+                <div class="issue-header">
+                    <h3 class="issue-title">{{ issue.title }}</h3>
                 </div>
-                <div style="font-size: 24px;">
-                    {% if issue.status == 'open' %}⚠️{% else %}✅{% endif %}
+                <p class="issue-desc">{{ issue.description }}</p>
+                
+                <div class="issue-meta">
+                    <span class="meta-item"><img src="./img/user.svg"> {{ issue.creator_username }}</span>
+                    <span class="meta-item"><img src="./img/time.svg"> {{ issue.created_at.strftime('%m/%d %H:%M') }}</span>
+                    <span class="meta-item" style="color: #4f46e5; font-weight: 600;">
+                        <img src="./img/comment.svg"> {{ issue.comment_count }} 則留言
+                    </span>
                 </div>
+            </div>
+
+            <div>
+                {% if issue.status == 'open' %}
+                    <span class="issue-status-badge badge-open">
+                        <img src="./img/warning.svg" style="width: 16px; height: 16px; margin-right: 4px;">待處理
+                    </span>
+                {% else %}
+                    <span class="issue-status-badge badge-resolved">
+                        <img src="./img/correct.svg" style="width: 16px; height: 16px; margin-right: 4px;">已解決
+                    </span>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <div style="text-align: center; padding: 40px; color: #888;">
-        <p style="font-size: 18px;">目前沒有任何待解決事項</p>
+    <div class="empty-state">
+        <img src="./img/empty_box.svg" onerror="this.style.display='none'" style="width: 60px; opacity: 0.3; margin-bottom: 15px;">
+        <p style="font-size: 16px; font-weight: 600;">目前沒有任何待解決事項</p>
         {% if role == 'client' and project.status == 'delivered' %}
-        <p>如果交付的成果有需要調整的地方,請建立 Issue 與接案人討論。</p>
+        <p style="font-size: 13px;">如果交付的成果有需要調整的地方,請上方表單建立 Issue。</p>
         {% endif %}
     </div>
     {% endif %}
 
-    {% if role == 'client' and stats.open_issues == 0 and stats.total_issues > 0 %}
-    <div style="background: #cbffcc; padding: 20px; border-radius: 15px; margin-top: 20px; text-align: center;">
-        <h3 style="color: #4CAF50;">🎉 所有 Issue 都已解決!</h3>
-        <p>您現在可以正式結案了</p>
-        <button onclick='notifyWindow("確認接受此結案檔案？(專案將結案)", "接受結案", "accept_delivery", {{ project.id }}, false);' 
-                style="background: #4CAF50; margin-top: 10px;">
-            接受結案
+    {% if role == 'client' and stats.open_issues == 0 and stats.total_issues > 0 and project.status != 'completed' %}
+    <div class="success-banner">
+        <div style="font-size: 40px; margin-bottom: 10px;">🎉</div>
+        <h3 style="color: #166534; margin: 0 0 10px 0;">太棒了！所有問題都已解決</h3>
+        <p style="color: #15803d; margin-bottom: 20px;">如果確認沒有其他問題，您可以正式結案。</p>
+        <button class="btn btn-submit" style="background: #10b981; max-width: 200px; margin: 0 auto;"
+                onclick='notifyWindow("確認接受此結案檔案？(專案將結案)", "接受結案", "accept_delivery", {{ project.id }}, false);'>
+            <img src="./img/correct.svg" style="width: 16px; height: 16px; margin-right: 4px;">接受結案
         </button>
     </div>
     {% endif %}
@@ -105,118 +123,5 @@
             </filter>
         </defs>
     </svg>
-    <div class="loading-text" id="loadingText">請稍後...</div>
+    <div class="loading-text" id="loadingText">處理中...</div>
 </div>
-
-<script>
-
-window.submitCreateIssue = async function(projectId) {
-    console.log('開始建立 Issue, projectId:', projectId);
-    
-    const formElement = document.getElementById('create-issue-form');
-    const titleInput = document.getElementById('issue-title');
-    const descInput = document.getElementById('issue-description');
-    const submitBtn = document.getElementById('create-issue-btn');
-    
-    
-    if (!titleInput.value.trim()) {
-        alert('請輸入標題');
-        titleInput.focus();
-        return;
-    }
-    
-    if (!descInput.value.trim()) {
-        alert('請輸入詳細說明');
-        descInput.focus();
-        return;
-    }
-    
-    
-    submitBtn.disabled = true;
-    submitBtn.innerText = '建立中...';
-    
-    const formData = new FormData(formElement);
-    
-    try {
-        
-        const loadingEl = document.getElementById('loading');
-        if (loadingEl) {
-            loadingEl.style.transition = "all 0.5s cubic-bezier(.33,1.53,.69,.99)";
-            setTimeout(() => {
-                loadingEl.style.opacity = 1;
-                loadingEl.style.scale = 1;
-                loadingEl.style.filter = "blur(0)";
-            }, 10);
-        }
-        
-        console.log('發送請求到:', `/api/project/${projectId}/issue/create`);
-        
-        const response = await fetch(`/api/project/${projectId}/issue/create`, {
-            method: "POST",
-            body: formData,
-            credentials: "include"
-        });
-        
-        console.log('回應狀態:', response.status);
-        
-        const data = await response.json();
-        console.log('回應數據:', data);
-        
-        if (response.ok) {
-            
-            loadContent(`/page/project/${projectId}/issues`);
-            setTimeout(() => {
-                notifyWindow("Issue 建立成功!", "", "alert", 0, false);
-            }, 500);
-        } else {
-            
-            console.error('API 錯誤:', data);
-            setTimeout(() => {
-                notifyWindow("錯誤: " + (data.message || '建立失敗'), "", "alert", 0, false);
-            }, 500);
-            
-            
-            submitBtn.disabled = false;
-            submitBtn.innerText = '建立 Issue';
-            
-            
-            if (loadingEl) {
-                loadingEl.style.opacity = 0;
-                loadingEl.style.scale = 0;
-                loadingEl.style.filter = "blur(20px)";
-            }
-        }
-    } catch (error) {
-        console.error('建立 Issue 時發生錯誤:', error);
-        alert("發生網路錯誤: " + error.message);
-        
-        
-        submitBtn.disabled = false;
-        submitBtn.innerText = '建立 Issue';
-        
-        
-        const loadingEl = document.getElementById('loading');
-        if (loadingEl) {
-            loadingEl.style.opacity = 0;
-            loadingEl.style.scale = 0;
-            loadingEl.style.filter = "blur(20px)";
-        }
-    }
-}
-
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Issue 頁面已載入');
-    const form = document.getElementById('create-issue-form');
-    if (form) {
-        console.log('表單已找到');
-    }
-});
-</script>
-
-<style>
-.issue-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-</style>
