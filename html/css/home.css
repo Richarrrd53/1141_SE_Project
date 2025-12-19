@@ -54,6 +54,7 @@ img{
     transition: all 1s cubic-bezier(.33,1.53,.69,.99);
     overflow-y: scroll;
     scrollbar-width: none;
+    scroll-behavior: smooth;
     box-shadow: 0px 0 20px rgba(0, 0, 0, 0.05)
 }
 

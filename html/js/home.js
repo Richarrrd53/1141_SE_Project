@@ -166,6 +166,7 @@ async function loadContent(url) {
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         const response = await fetch(url, { method: "GET"});
 
         if (!response.ok) {
@@ -216,6 +217,7 @@ async function deletePost(n) {
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         const response = await fetch(`/page/my-projects/delete/${n}`, { method: "DELETE", credentials: "include"});
         const data = await response.json();
 
@@ -254,6 +256,7 @@ async function editorSubmit(){
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         const response = await fetch(`/page/my-projects/edit/${id}`,{method: "POST",body: formData});
         const data = await response.json();
         if (response.ok) {
@@ -385,6 +388,7 @@ async function submitCreateProject() {
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         const response = await fetch(`/page/create-project`,{method: "POST", body: formData});
         const data = response.json();
         if(response.ok){
@@ -418,6 +422,7 @@ async function submitBids(){
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         const response = await fetch("/api/project/bid", {
             method: "POST",
             body: formData,
@@ -453,6 +458,7 @@ async function submitAcceptBid(bid_id) {
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         const response = await fetch(`/api/project/accept-bid/${bid_id}`, {
             method: "POST",
             credentials: "include"
@@ -489,6 +495,7 @@ async function submitDelivery(n){
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         const response = await fetch(`/api/project/${n}/deliver`, {
             method: "POST",
             body: formData,
@@ -523,6 +530,7 @@ async function submitAcceptDelivery(project_id) {
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         const response = await fetch(`/api/project/${project_id}/complete`, {
             method: "POST",
             credentials: "include"
@@ -554,6 +562,7 @@ async function submitRejectDelivery(project_id) {
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         const response = await fetch(`/api/project/${project_id}/reject`, {
             method: "POST",
             credentials: "include"
@@ -585,6 +594,7 @@ async function submitRestoreProject(project_id) {
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         const response = await fetch(`/api/project/${project_id}/restore`, {
             method: "POST",
             credentials: "include"
@@ -618,6 +628,7 @@ async function submitCreateReview(project_id) {
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         const response = await fetch(`/api/submit-review/${project_id}`, {
             method: "POST",
             body: formData,
@@ -677,6 +688,7 @@ async function submitCreateIssue(projectId) {
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         
         const response = await fetch(`/api/project/${projectId}/issue/create`, {
             method: "POST",
@@ -729,6 +741,7 @@ async function submitComment(issueId) {
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         
         const response = await fetch(`/api/issue/${issueId}/comment`, {
             method: "POST",
@@ -765,6 +778,7 @@ async function resolveIssue(issueId) {
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         
         const response = await fetch(`/api/issue/${issueId}/resolve`, {
             method: "POST",
@@ -807,6 +821,7 @@ async function reopenIssue(issueId) {
             $("loading").style.scale = 1;
             $("loading").style.filter = "blur(0)";
         }, 10);
+        $("mainContent").scrollTo(0, 0);
         
         const response = await fetch(`/api/issue/${issueId}/reopen`, {
             method: "POST",
