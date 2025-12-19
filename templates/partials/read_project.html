@@ -65,18 +65,27 @@
                 </div>
             {% endif %}
 
-            {% if project.status in ['delivered', 'completed', 'rejected'] or (role == 'freelancer' and project.status == 'in_progress') %}
+            {% if project.status in ['in_progress', 'delivered', 'completed', 'rejected'] or (role == 'freelancer' and project.status == 'in_progress') %}
             <div class="detail-card">
                 <h3 style="margin: 0 0 16px 0; color: #111827;">
                     <img src="./img/box.svg"> 檔案交付管理
                 </h3>
-
-                {% if project.status == 'in_progress' %}
+                {% if role == 'client' %}
+                    {% if project.status == 'in_progress' %}
                     <p class="text-muted">等待接案人上傳檔案...</p>
-                {% elif project.status == 'rejected' %}
-                    <p class="text-danger font-bold">檔案已被退回，請接案人參考 Issue 修改後重新上傳。</p>
-                {% elif project.status == 'delivered' %}
+                    {% elif project.status == 'rejected' %}
+                    <p class="text-danger font-bold">檔案已退回，請在 Issue 中提出修改方向並等待接案人重新上傳。</p>
+                    {% elif project.status == 'delivered' %}
                     <p class="text-success font-bold">接案人已交付檔案，請下載並審核。</p>
+                    {% endif %}
+                {% else %}
+                    {% if project.status == 'in_progress' %}
+                    <p class="text-muted">請您上傳結案檔案，並交由委託人審核。</p>
+                    {% elif project.status == 'rejected' %}
+                    <p class="text-danger font-bold">檔案已被退回，請參考 Issue 修改後重新上傳。</p>
+                    {% elif project.status == 'delivered' %}
+                    <p class="text-success font-bold">已交付檔案，請等待委託人審核...</p>
+                    {% endif %}
                 {% endif %}
 
                 {% if role == 'freelancer' and project.status in ['in_progress', 'rejected'] and current_user == project.accepted_freelancer_username %}
@@ -150,7 +159,7 @@
                             <div class="bid-header">
                                 <div>
                                     <span style="font-weight: bold; font-size: 16px;">{{ bid.freelancer_username }}</span>
-                                    <span style="color: gold; margin-left: 5px;">★ {{ bid.avg_score }}</span>
+                                    <span style="color: gold; margin-left: 5px;">★ {{ bid.freelancer_avg_score }}</span>
                                 </div>
                                 <div style="font-weight: bold; color: #4f46e5; font-family: monospace; font-size: 16px;">
                                     ${{ bid.bid_amount }}
@@ -598,6 +607,7 @@
                 <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f3f4f6;">
                     <div style="font-size: 12px; color: #6b7280;">承接人 (Freelancer)</div>
                     <div style="font-weight: bold; font-size: 16px; color: #4f46e5;">{{ project.accepted_freelancer_username }}</div>
+                    <span style="font-size: 12px; color: gold;">★ {{ project.freelancer_avg_score }}</span>
                 </div>
                 {% endif %}
             </div>

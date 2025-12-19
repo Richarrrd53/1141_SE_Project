@@ -11,13 +11,16 @@ body {
 }
 
 body::selection{
-    background-color: rgba(46, 46, 46);
-    color: #fff;
+    background-color: rgba(46, 46, 46, 0.2);
 }
 
 h1::selection{
     background-color: #232F4A;
     color: #fff;
+}
+
+button{
+    user-select: none;
 }
 
 a{
@@ -61,6 +64,8 @@ img{
     z-index: 1000;
     background-color: transparent; 
     color: #2e2e2e;
+    font-weight: 900;
+    font-size: 20px;
     backdrop-filter: blur(30px);
     display: flex;
     flex-direction: row;
@@ -104,37 +109,39 @@ img{
     height: 20px;
 }
 
-
-.role-client{
-    color: #fff;
-    padding: 4px 8px;
-    border-radius: 10px;
-    background-color: #2F4189;
-    font-size: 12px;
+.topbar .user-icon{
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    color: #444444;
+    font-size: 20px;
     font-weight: bold;
-    margin-left: 10px;
-    scale: 0.8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
 }
 
-.role-client::selection{
-    color: #2F4189;
-    background-color: #fff;
+
+.topbar .user-info{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
 }
 
-.role-freelancer{
-    color: #fff;
-    padding: 4px 8px;
-    border-radius: 10px;
-    background-color: #EA580C;
-    font-size: 12px;
+.topbar .user-info p{
+    margin: 0;
+    padding: 0;
+    font-size: 20px;
+    font-weight: 900;
+}
+
+.topbar .user-info span{
+    font-size: 14px;
     font-weight: bold;
-    margin-left: 10px;
-    scale: 0.8;
-}
-
-.role-freelancer::selection{
-    color: #EA580C;
-    background-color: #fff;
+    color: #666666;
 }
 
 .sidebar {
@@ -247,6 +254,7 @@ img{
 }
 
 .sidebar ul li a:hover {
+    background: #fff;
     box-shadow: 0px 5px 20px rgba(120, 120, 120, 0.1);
 }
 
@@ -271,6 +279,15 @@ img{
     cursor: pointer;
     transition: all 1s cubic-bezier(.33,1.53,.69,.99);
     scale: 0.6;
+}
+
+.hamburger-label:hover{
+    scale: 0.8;
+}
+
+.hamburger-label:active{
+    scale: 0.4;
+    opacity: 0.6;
 }
 
 .hamburger-label div {
@@ -673,7 +690,7 @@ img{
 
 #notifyBell{
     padding: 15px 15px;
-    background: rgba(120, 120, 120, 0);
+    background: #fff;
     border-radius: 30px;
     transition: all 0.3s cubic-bezier(.4,0,.2,1);
     box-shadow: 0px 5px 20px rgba(120, 120, 120, 0);
@@ -681,7 +698,7 @@ img{
 }
 
 #notifyBell:hover{
-    background-color: rgba(120, 120, 120, 0.1);
+    background-color: #fefefe;
     box-shadow: 0px 5px 20px rgba(120, 120, 120, 0.2);
 }
 
@@ -1429,38 +1446,6 @@ input[type="file"]::file-selector-button:hover {
 #contentTable a {
     text-decoration: none;
     color: #2e2e2e;
-}
-
-
-.sidebar::-webkit-scrollbar, 
-.main-content::-webkit-scrollbar,
-#notifyDropdown::-webkit-scrollbar {
-    display: block;
-    width: 8px;
-}
-
-.sidebar::-webkit-scrollbar-track, 
-.main-content::-webkit-scrollbar-track,
-#notifyDropdown::-webkit-scrollbar-track {
-    background: transparent; 
-}
-
-.sidebar::-webkit-scrollbar-thumb, 
-.main-content::-webkit-scrollbar-thumb,
-#notifyDropdown::-webkit-scrollbar-thumb {
-    background-color: rgba(46, 46, 46, 0.2); 
-    border-radius: 4px;
-}
-
-.sidebar::-webkit-scrollbar-thumb:hover, 
-.main-content::-webkit-scrollbar-thumb:hover,
-#notifyDropdown::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(46, 46, 46, 0.4); 
-}
-
-.sidebar, .main-content, #notifyDropdown {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(46, 46, 46, 0.2) transparent;
 }
 
 
@@ -2241,33 +2226,46 @@ input[type="file"]::file-selector-button:hover {
     height: 50px;
     display: flex;
     align-items: center;
-    gap: 16px; /* 圖標與文字的間距 */
+    gap: 16px;
     text-decoration: none;
-    
+    transition: all 0.3s cubic-bezier(.4,0,.2,1);
 }
 
 .logo-icon {
-    flex-shrink: 0; /* 防止圖標被壓縮 */
-    filter: drop-shadow(0 0 8px rgba(165, 180, 252, 0.3)); /* 增加一點點發光效果讓它更跳 */
-    transition: transform 0.3s ease;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 8px rgba(165, 180, 252, 0.3));
+    transition: all 0.3s cubic-bezier(.4,0,.2,1);
+    cursor: pointer;
 }
 
 .logo-text {
     font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-    font-size: 32px; /* 加大字體 */
-    font-weight: 900;  /* 最粗體 */
-    color: #ffffff;    /* "Task" 是白色 */
+    font-size: 32px;
+    font-weight: 900;
+    color: #ffffff;
     line-height: 1;
-    letter-spacing: -0.5px; /* 字距稍微緊湊一點更有張力 */
+    letter-spacing: -0.5px;
     user-select: none;
-    cursor: auto;
+    cursor: pointer;
 }
 
 .logo-text span {
-    color: #a5b4fc; /* "Flow" 是淺藍紫色 */
+    color: #a5b4fc;
+}
+
+.logo-container:hover{
+    scale: 1.05;
+}
+
+.logo-container:active{
+    scale: 0.95;
 }
 
 /* 懸停互動效果 */
 .logo-container:hover .logo-icon {
-    transform: scale(1.05) rotate(-5deg); /* 輕微放大並旋轉 */
+    transform: scale(1.2) rotate(-10deg); /* 輕微放大並旋轉 */
+}
+
+.logo-container:active .logo-icon {
+    transform: scale(1) rotate(0deg); /* 輕微放大並旋轉 */
 }

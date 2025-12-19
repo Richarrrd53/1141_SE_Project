@@ -306,6 +306,10 @@ async def read_project(req: Request, id:int, conn = Depends(getDB), user: str=De
         })
     else:
         bids_list = await bids.get_bids_for_project(conn, id)
+        for bid in bids_list:
+            freelancer_avg_score = await reviews.get_user_avg_rating(conn, bid['freelancer_id'])
+            bid['freelancer_avg_score'] = freelancer_avg_score
+            project_detail['freelancer_avg_score'] = freelancer_avg_score
         return templates.TemplateResponse("partials/read_project.html", {
             "request":req,
             "project": project_detail, 
@@ -414,8 +418,9 @@ async def get_browse_projects_page(req: Request, conn = Depends(getDB), user:str
             
     # 定義台灣時區
     tw_tz = ZoneInfo("Asia/Taipei")
-    is_deadline_approaching = False
     for item in project_list:
+        is_deadline_approaching = False
+        is_deadline_passed = False
         d_dt = item.get('deadline_datetime')
         
         # 如果資料庫沒存絕對時間，才勉強用 create_time + deadline 分鐘數
@@ -438,18 +443,20 @@ async def get_browse_projects_page(req: Request, conn = Depends(getDB), user:str
         now = datetime.now(tw_tz)
         remaining_time = deadline - now
         
-        if timedelta(0) < remaining_time <= timedelta(days=3):
+        if timedelta(0) < remaining_time and remaining_time <= timedelta(days=3):
             is_deadline_approaching = True
+        if now > deadline:
+            is_deadline_passed = True
             
         item["is_deadline_approaching"] = is_deadline_approaching
+        item["is_deadline_passed"] = is_deadline_passed
 
         item['status_text'] = translate_status(item.get('status', ''))
 
     return templates.TemplateResponse("partials/browse_projects.html", {
         "request": req,
         "items": project_list,
-        "role": myRole,
-        "is_deadline_approaching": is_deadline_approaching
+        "role": myRole
     })
     
 @app.post("/api/project/bid", dependencies=[Depends(checkRole("freelancer"))])
@@ -743,9 +750,22 @@ async def get_my_jobs_page(req: Request, conn = Depends(getDB), user_name:str=De
             item['deadline_date'] = None
             
         is_deadline_passed = False
+        is_deadline_approaching = False
+        
+        now = datetime.now(tw_tz)
+        deadline = item.get("deadline_date")
+        if deadline:
+            if deadline.tzinfo is None:
+                deadline = deadline.replace(tzinfo=tw_tz)
+            remaining_time = deadline - now
+            
+            if timedelta(0) < remaining_time and remaining_time <= timedelta(days=3):
+                is_deadline_approaching = True
+            item["is_deadline_approaching"] = is_deadline_approaching
         if item.get("deadline_date"):
             is_deadline_passed = datetime.now(tw_tz) > item["deadline_date"]
             item["is_deadline_passed"] = is_deadline_passed
+        
 
         item['status_text'] = translate_status(item.get('status', ''))
 

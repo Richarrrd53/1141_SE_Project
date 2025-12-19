@@ -16,7 +16,7 @@
             
             {% if issue.status == 'open' %}
                 <span style="background: #fffbeb; color: #b45309; padding: 6px 12px; border-radius: 8px; font-weight: bold; border: 1px solid #fcd34d;">
-                    <img src="./img/correct.svg" style="width: 16px; height: 16px; margin-right: 4px;"> 未解決
+                    <img src="./img/warning.svg" style="width: 16px; height: 16px; margin-right: 4px;"> 未解決
                 </span>
             {% else %}
                 <span style="background: #ecfdf5; color: #0eb83a; padding: 6px 12px; border-radius: 8px; font-weight: bold; border: 1px solid #6ee7b7;">
@@ -39,7 +39,7 @@
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px dashed #e5e7eb; display: flex; justify-content: flex-end;">
                 {% if issue.status == 'open' %}
                     <button class="btn btn-resolve" onclick='resolveIssue({{ issue.id }});'>
-                        <span>✓</span> 標記為已解決
+                        ✓ 標記為已解決
                     </button>
                 {% else %}
                     {% if project.status != 'completed' and project.status != 'deleted'%}

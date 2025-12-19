@@ -862,7 +862,7 @@ async function checkNotifications() {
                 let typeClass = 'type-system';
 
                 if (notif.message.includes("報價") || notif.message.includes("金額")) {
-                    icon = '<img src="./img/bid.svg" style="filter: invert(39%) sepia(83%) saturate(7493%) hue-rotate(57deg) brightness(205%) contrast(101%);">';
+                    icon = '<img src="./img/bid.svg" style="filter: invert(39%) sepia(83%) saturate(7493%) hue-rotate(57deg) brightness(230%) contrast(101%);">';
                     typeClass = 'type-bid';
                 } else if (notif.message.includes("結案") || notif.message.includes("成功") || notif.message.includes("接受")) {
                     icon = '<img src="./img/correct.svg">';
@@ -871,7 +871,7 @@ async function checkNotifications() {
                     icon = '<img src="./img/delete.svg">';
                     typeClass = 'type-alert';
                 } else if (notif.message.includes("評價")) {
-                    icon = '<img src="./img/star2.svg" style="filter: invert(51%) sepia(83%) saturate(7493%) hue-rotate(774deg) brightness(187%) contrast(101%);">';
+                    icon = '<img src="./img/star2.svg" style="filter: invert(51%) sepia(83%) saturate(7493%) hue-rotate(774deg) brightness(223%) contrast(101%);">';
                     typeClass = 'type-bid';
                 }
 
@@ -893,7 +893,7 @@ async function checkNotifications() {
             notifyBell.classList.remove("has-unread");
             notifyCount.style.display = 'none';
             notifyDropdown.innerHTML = `
-                <div class="notify-header-title">🔔 通知中心</div>
+                <div class="notify-header-title"><img src="./img/bell.svg">通知中心</div>
                 <div style="text-align: center; color: #9ca3af; padding: 40px;">
                     <img src="./img/empty_box.svg" style="width: 40px; opacity: 0.3; margin-bottom: 10px; display: block; margin: 0 auto 10px;">
                     目前沒有新通知

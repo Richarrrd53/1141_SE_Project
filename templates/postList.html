@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>工作委託平台</title>
+    <title>TaskFlow</title>
     <link rel="stylesheet" href="./css/home.css">
     <script src="./js/home.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="./img/logo.svg">
 </head>
 <body>
 	<div id="BG"></div>
@@ -42,7 +43,7 @@
 	<header class="topbar">
         <div class="group">
             <div id="logoSection">
-                <div class="logo-container" style="width: 240px; height: 50px; display: flex; align-items: center; gap: 16px; font-family: 'Segoe UI', sans-serif;">
+                <div class="logo-container" style="width: 240px; height: 50px; display: flex; align-items: center; gap: 16px; font-family: 'Noto Sans TC', sans-serif;">
                     <svg class="logo-icon" width="48" height="48" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M26.6667 10.6667L14.6667 22.6667L8 16" stroke="#4f46e5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M14.6667 22.6667L24 13.3333C24 13.3333 26.6667 16 26.6667 21.3333C26.6667 26.6667 22.6667 29.3333 16 29.3333C9.33333 29.3333 5.33333 26.6667 2.66667 21.3333C1.33333 18.6667 1.33333 13.3333 2.66667 10.6667" stroke="#4f46e5" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.3"/>
@@ -57,8 +58,12 @@
                 <img src="./img/notification-blur.svg" class="icon" alt="" >
                 <span id="notifyCount"></span>
             </label>
-            <div>
-                你好, {{ username }} <span class="role-{{ role }}">{{ role }}</span>
+            <div class="user-icon icon-{{ role }}">
+                {{ username[0]|upper }}
+            </div>
+            <div class="user-info">
+                <p>{{ username }}</p>
+                <span>{{ role }}</span>
             </div>
         </div>
 	</header>
