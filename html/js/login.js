@@ -99,17 +99,33 @@ window.onload = () => {
             }, 1000);
         }
     });
-    window.addEventListener('keydown', function(event) {
+    $("input-username").addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
-            if($("input-username").focused){
-                $("input-password").focus();
-            }
-            if($("input-password").focused){
-                $("submitBtn").click();
-            }
+            $("input-password").focus();
         }
-    }); 
+    });
+    $("input-password").addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            $("submitBtn").click();
+        }
+    });
+    $("input-reg-username").addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            $("input-reg-password").focus();
+        }
+    });
+    $("input-reg-password").addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            $("input-reg-role").click();
+        }
+    });
+    $("input-reg-role").addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            $("registerBtn").click();
+        }
+    });
 };
+
 
 
 function shake(item){

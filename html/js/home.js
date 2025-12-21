@@ -910,7 +910,7 @@ async function checkNotifications() {
             notifyDropdown.innerHTML = `
                 <div class="notify-header-title"><img src="./img/bell.svg">通知中心</div>
                 <div style="text-align: center; color: #9ca3af; padding: 40px;">
-                    <img src="./img/empty_box.svg" style="width: 40px; opacity: 0.3; margin-bottom: 10px; display: block; margin: 0 auto 10px;">
+                    <img src="./img/empty.svg" style="width: 40px; opacity: 0.3; margin-bottom: 10px; display: block; margin: 0 auto 10px;">
                     目前沒有新通知
                 </div>
             `;

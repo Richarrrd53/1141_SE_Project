@@ -87,7 +87,7 @@
     </div>
     {% else %}
     <div class="empty-state">
-        <img src="./img/empty_box.svg" onerror="this.style.display='none'" style="width: 60px; opacity: 0.3; margin-bottom: 15px;">
+        <img src="./img/empty.svg" onerror="this.style.display='none'" style="width: 60px; opacity: 0.3; margin-bottom: 15px;">
         <p style="font-size: 16px; font-weight: 600;">目前沒有任何待解決事項</p>
         {% if role == 'client' and project.status == 'delivered' %}
         <p style="font-size: 13px;">如果交付的成果有需要調整的地方,請上方表單建立 Issue。</p>
