@@ -99,6 +99,16 @@ window.onload = () => {
             }, 1000);
         }
     });
+    window.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            if($("input-username").focused){
+                $("input-password").focus();
+            }
+            if($("input-password").focused){
+                $("submitBtn").click();
+            }
+        }
+    }); 
 };
 
 
